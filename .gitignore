@@ -1,3 +1,5 @@
 /target
 /models
-/data
+data
+data/mydb
+

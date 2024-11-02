@@ -1,0 +1,22 @@
+endpoints:
+  - id: "run_analysis"
+    text: "lancer analyse"
+    variations:
+      - "exécuter une analyse"
+      - "faire une analyse"
+      - "démarrer l'analyse"
+      - "fait péter une analyse"
+      - "commencer l'analyse"
+      - "analyser"
+      - "lancer une analyse"
+    description: "Exécuter une tâche d'analyse"
+
+  - id: "perform_calc"
+    text: "effectuer calcul"
+    variations:
+      - "faire un calcul"
+      - "calculer"
+      - "réaliser un calcul"
+      - "exécuter un calcul"
+      - "faire le calcul"
+    description: "Effectuer une tâche de calcul"
