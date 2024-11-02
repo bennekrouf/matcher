@@ -1,22 +1,32 @@
 endpoints:
   - id: "run_analysis"
     text: "lancer analyse"
-    variations:
-      - "exécuter une analyse"
-      - "faire une analyse"
-      - "démarrer l'analyse"
-      - "fait péter une analyse"
-      - "commencer l'analyse"
-      - "analyser"
-      - "lancer une analyse"
+    patterns:
+      - "analyse de {app}"
+      - "analyser {app}"
+      - "lancer analyse de {app}"
+      - "demarrer analyse de {app}"
+      - "lance analyse de {app}"
+      - "fait peter analyse de {app}"
     description: "Exécuter une tâche d'analyse"
+    parameters:
+      - name: "app"
+        description: "Nom de l'application à analyser"
+        required: true
 
-  - id: "perform_calc"
-    text: "effectuer calcul"
-    variations:
-      - "faire un calcul"
-      - "calculer"
-      - "réaliser un calcul"
-      - "exécuter un calcul"
-      - "faire le calcul"
-    description: "Effectuer une tâche de calcul"
+  - id: "send_email"
+    text: "envoyer email"
+    patterns:
+      - "envoyer un mail à {email}"
+      - "envoyer un email à {email}"
+      - "envoie le mail à {email}"
+      - "envoie un mail à {email}"
+      - "envoie le document par mail à {email}"
+      - "envoie le document à {email}"
+      - "envoi le mail à {email}"
+      - "envoyer le document à {email}"
+    description: "Envoyer un document par email"
+    parameters:
+      - name: "email"
+        description: "Adresse email du destinataire"
+        required: true

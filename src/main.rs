@@ -5,6 +5,7 @@ mod config;
 mod preprocessing;
 #[cfg(test)]
 mod tests;
+mod extract_app_name;
 
 use anyhow::Result as AnyhowResult;
 use lazy_static::lazy_static;
@@ -67,29 +68,19 @@ async fn main() -> AnyhowResult<()> {
 
     if let Some(query) = args.query {
         let results = db.search_similar(&query, &args.language, 1).await?;
+        // println!("Results returned : {:?}", results);
         for result in results {
             println!(
                 "Matched text: {} (similarity: {:.2})", 
-                result.text, 
+                result.endpoint_id, 
                 result.similarity
             );
+            println!("Pattern: {}", result.pattern);
+            if let Some(app) = result.parameters.get("app") {
+                println!("Application: {}", app);
+            }
         }
     }
-
-    // Get results
-    // let results = db.search_similar("run analysis", 1).await?;
-
-    // Process results however you want
-    // for result in results {
-    //     println!(
-    //         "Matched text: {} (similarity: {:.2})", 
-    //         result.text, 
-    //         result.similarity
-    //     );
-    // }
-
-    // Example of using results in different ways
-    // let results = db.search_similar("perform calculation", 2).await?;
 
     // Filter results above certain threshold
     // let _filtered = results.iter()
