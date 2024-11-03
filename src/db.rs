@@ -43,13 +43,35 @@ impl VectorDB {
         let connection = connect(db_path).execute().await?;
 
         if with_init {
-            if let Some(config) = config {
+            if let Some(ref config) = config {
                 println!("Initializing database with endpoints from config...");
+
+
+                // Try to drop if exists, but don't fail if it doesn't
+                match connection.drop_table("patterns").await {
+                    Ok(_) => println!("Dropped existing patterns table."),
+                    Err(e) => println!("Note: Couldn't drop table (might not exist): {}", e),
+                }
+
+                // connection.ensure_table_dropped("patterns").await?;
                 Self::initialize_table(&connection, &config.endpoints).await?;
             }
         }
 
-        let patterns_table = connection.open_table("patterns").execute().await.context("Failed to open patterns table")?;
+        // Try to open the table
+        let patterns_table = match connection.open_table("patterns").execute().await {
+            Ok(table) => table,
+            Err(e) => {
+                // If table doesn't exist and we have config, create it
+                if e.to_string().contains("Table not found") && config.is_some() {
+                    println!("Table not found, creating new one...");
+                    Self::initialize_table(&connection, &config.unwrap().endpoints).await?;
+                    connection.open_table("patterns").execute().await?
+                } else {
+                    return Err(e.into());
+                }
+            }
+        };
 
         Ok(Self {
             connection,
@@ -65,13 +87,15 @@ impl VectorDB {
         let mut pattern_embeddings = Vec::new();
 
         for endpoint in endpoints {
+            println!("\nProcessing endpoint: {}", endpoint.id);
             for pattern in &endpoint.patterns {
-                println!("Processing pattern: {}", pattern);
+                println!("  Adding pattern: '{}'", pattern);
                 let embedding = get_embeddings(pattern).await?;
                 pattern_entries.push((endpoint.id.clone(), pattern.clone()));
                 pattern_embeddings.push(embedding);
             }
         }
+
 
         // Create patterns table
         let patterns_schema = Arc::new(Schema::new(vec![
@@ -105,14 +129,20 @@ impl VectorDB {
             vec![id_array, pattern_array, vector_array],
         )?;
 
-        connection.create_table(
+         match connection.create_table(
             "patterns",
             Box::new(RecordBatchIterator::new(vec![Ok(pattern_batch)], patterns_schema)),
         )
         .execute()
-        .await?;
+        .await 
+        {
+            Ok(_) => println!("Table created successfully!"),
+            Err(e) => {
+                println!("Error creating table: {}", e);
+                return Err(e.into());
+            }
+        }
 
-        println!("Patterns table created successfully!");
         Ok(())
     }
 
@@ -225,4 +255,33 @@ fn extract_parameters(query: &str, pattern: &str) -> AnyhowResult<HashMap<String
     }
 
     Ok(params)
+}
+
+#[async_trait::async_trait]
+trait DatabaseHelper {
+    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool>;
+    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()>;
+}
+
+#[async_trait::async_trait]
+impl DatabaseHelper for Connection {
+    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool> {
+        match self.open_table(table_name).execute().await {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if e.to_string().contains("Table not found") {
+                    Ok(false)
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
+    }
+
+    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()> {
+        if self.table_exists(table_name).await? {
+            self.drop_table(table_name).await?;
+        }
+        Ok(())
+    }
 }

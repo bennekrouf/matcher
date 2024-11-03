@@ -71,7 +71,7 @@ async fn main() -> AnyhowResult<()> {
         // println!("Results returned : {:?}", results);
         for result in results {
             println!(
-                "Matched text: {} (similarity: {:.2})", 
+                "Matched endpoint: {} (similarity: {:.2})", 
                 result.endpoint_id, 
                 result.similarity
             );
