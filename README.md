@@ -31,7 +31,7 @@ matcher --help
 # Show version
 matcher --version
 
-# Basic query
+# Basic query => EN !!!
 matcher -q "run analysis"
 
 # Verbose output with multiple results
@@ -41,12 +41,11 @@ matcher -q "run analysis" -v --limit 3
 matcher --reload -q "run analysis" -v
 
 
-# Test French queries
+# Test French queries => FR !!!
 cargo run -- --query "Pourriez-vous lancer l'analyse" --language fr
 
 # Test with database reload
 cargo run -- --reload --query "Je voudrais effectuer un calcul" --language fr
-
 
 
 ./target/debug/matcher --query "envoie le document par email à fawzan@gmail.com"
