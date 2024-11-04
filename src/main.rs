@@ -14,6 +14,7 @@ use crate::model::load_model;
 use anyhow::Result as AnyhowResult;
 use iggy::client::Client;
 use iggy::client::UserClient;
+use iggy::clients::builder::IggyClientBuilder;
 use iggy::clients::client::IggyClient;
 use lazy_static::lazy_static;
 use send_structured_message::send_structured_message;
@@ -105,7 +106,11 @@ async fn main() -> AnyhowResult<()> {
 }
 
 async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
-    let client = IggyClient::default();
+    //let client = IggyClient::default();
+    let client = IggyClientBuilder::new()
+        .with_tcp()
+        .with_server_address("abjad.mayorana.ch:8090".to_string())
+        .build()?;
     client.connect().await?;
     client.login_user("iggy", "iggy").await?;
 
