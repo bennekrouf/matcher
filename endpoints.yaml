@@ -1,5 +1,5 @@
 endpoints:
-  - id: "run_analysis"
+  - id: "analyze_specific_repository"
     text: "lancer analyse"
     patterns:
       - "analyse de {app}"
