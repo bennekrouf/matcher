@@ -5,27 +5,25 @@ mod extract_app_name;
 mod model;
 mod preprocessing;
 mod send_structured_message;
+mod grpc_server;
 #[cfg(test)]
 mod tests;
-mod grpc_server;
 
-use crate::config::Config;
-use crate::db::{SearchResult, VectorDB};
-use crate::model::load_model;
-use anyhow::Result as AnyhowResult;
-use iggy::client::Client;
-use iggy::client::UserClient;
 use iggy::clients::builder::IggyClientBuilder;
+use std::sync::Arc;
+use anyhow::Result as AnyhowResult;
+use clap::Parser;
 use lazy_static::lazy_static;
-use send_structured_message::send_structured_message;
+use crate::send_structured_message::send_structured_message;
+use crate::db::SearchResult;
+use crate::db::VectorDB;
+use crate::config::Config;
+use crate::model::load_model;
+use iggy::client::UserClient;
+use iggy::client::Client;
 
-// use tracing::{error, info};
-// use tracing_futures::Instrument;
-// const MODEL_PATH: &str = "models/all-MiniLM-L6-v2";
 const MODEL_PATH: &str = "models/multilingual-MiniLM";
 const CONFIG_PATH: &str = "endpoints.yaml";
-
-use clap::Parser;
 
 #[derive(Parser)]
 #[command(
@@ -37,25 +35,18 @@ use clap::Parser;
     help_template = "{about}\n\nUSAGE:\n    {usage}\n\n{options}"
 )]
 struct Args {
-    /// Reload the database with current YAML config
     #[arg(long, default_value = "false")]
     reload: bool,
-
-    /// Query to test
     #[arg(short, long)]
     query: Option<String>,
-
-    /// Show debug information
     #[arg(long)]
     debug: bool,
-
-    /// Show all matches
     #[arg(long)]
     all: bool,
-
-    /// Language for the query (en, fr, etc)
     #[arg(short, long, default_value = "fr")]
     language: String,
+    #[arg(long)]
+    server: bool,
 }
 
 lazy_static! {
@@ -69,14 +60,24 @@ lazy_static! {
 async fn main() -> AnyhowResult<()> {
     let args = Args::parse();
     println!("Loading model from: {}", MODEL_PATH);
-    let config = Config::load_from_yaml(CONFIG_PATH)?;
-    let db = VectorDB::new("data/mydb", Some(config), args.reload).await?;
 
-    println!("\nTesting vector search...");
+    let config = Arc::new(Config::load_from_yaml(CONFIG_PATH)?);
 
-    if let Some(query) = args.query {
-        let results = db.search_similar(&query, &args.language, 1).await?;
-        process_search_results(results).await?;
+    if args.server {
+        // Run in server mode
+        println!("Starting gRPC server...");
+        if let Err(e) = grpc_server::start_grpc_server(config).await {
+            eprintln!("Failed to start gRPC server: {}", e);
+        }
+    } else {
+        // Run in CLI mode
+        let db = VectorDB::new("data/mydb", Some(config.as_ref().clone()), args.reload).await?;
+
+        if let Some(query) = args.query {
+            println!("\nTesting vector search...");
+            let results = db.search_similar(&query, &args.language, 1).await?;
+            process_search_results(results).await?;
+        }
     }
 
     Ok(())

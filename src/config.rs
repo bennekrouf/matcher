@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Parameter {
     pub name: String,
     pub description: String,
     pub required: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Endpoint {
     pub id: String,
     pub text: String,
@@ -19,7 +19,7 @@ pub struct Endpoint {
     pub parameters: Vec<Parameter>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub endpoints: Vec<Endpoint>,
 }

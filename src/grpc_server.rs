@@ -19,7 +19,7 @@ pub struct MatcherService {
 }
 
 #[tonic::async_trait]
-impl matcher::matcher_service_server::MatcherService for MatcherService {
+impl matcher::matcher_server::Matcher for MatcherService {
     async fn match_query(
         &self,
         request: Request<matcher::MatchRequest>,
@@ -36,7 +36,7 @@ impl matcher::matcher_service_server::MatcherService for MatcherService {
             .iter()
             .map(|result| matcher::EndpointMatch {
                 endpoint_id: result.endpoint_id.clone(),
-                similarity: result.similarity,
+                similarity: result.similarity as f64,
                 parameters: result.parameters.clone(),
             })
             .collect();
@@ -60,7 +60,7 @@ pub async fn start_grpc_server(
 
     // Initialize VectorDB
     let db = Arc::new(
-        VectorDB::new("data/mydb", Some(config.clone()), false)
+        VectorDB::new("data/mydb", Some((*config).clone()), false)
             .await
             .expect("Failed to initialize VectorDB")
     );
@@ -81,7 +81,7 @@ pub async fn start_grpc_server(
     info!("Starting gRPC server on {}", addr);
 
     Server::builder()
-        .add_service(matcher::matcher_service_server::MatcherServiceServer::new(matcher_service))
+        .add_service(matcher::matcher_server::MatcherServer::new(matcher_service))
         .add_service(reflection_service)
         .serve(addr)
         .await?;
