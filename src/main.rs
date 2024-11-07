@@ -7,6 +7,7 @@ mod preprocessing;
 mod send_structured_message;
 #[cfg(test)]
 mod tests;
+mod grpc_server;
 
 use crate::config::Config;
 use crate::db::{SearchResult, VectorDB};
@@ -15,10 +16,11 @@ use anyhow::Result as AnyhowResult;
 use iggy::client::Client;
 use iggy::client::UserClient;
 use iggy::clients::builder::IggyClientBuilder;
-use iggy::clients::client::IggyClient;
 use lazy_static::lazy_static;
 use send_structured_message::send_structured_message;
 
+// use tracing::{error, info};
+// use tracing_futures::Instrument;
 // const MODEL_PATH: &str = "models/all-MiniLM-L6-v2";
 const MODEL_PATH: &str = "models/multilingual-MiniLM";
 const CONFIG_PATH: &str = "endpoints.yaml";

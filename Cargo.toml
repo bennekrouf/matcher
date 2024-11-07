@@ -1,5 +1,5 @@
 [package]
-name = "berto"
+name = "matcher"
 version = "0.1.0"
 edition = "2021"
 
@@ -27,7 +27,16 @@ thiserror = "1.0.66"
 tokenizers = "0.20.1"
 tokio = { version = "1.41.0", features = ["full"] }
 chrono = "0.4.38"
+tonic = "0.12.3"
+tonic-reflection = "0.12.3"
+tracing = "0.1.40"
+tracing-futures = "0.2.5"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+prost = "0.13.3"
 
 [[bin]]
 name = "matcher"
 path = "src/main.rs"
+
+[build-dependencies]
+tonic-build = "0.12.3"
