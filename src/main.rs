@@ -74,33 +74,8 @@ async fn main() -> AnyhowResult<()> {
 
     if let Some(query) = args.query {
         let results = db.search_similar(&query, &args.language, 1).await?;
-        // println!("Results returned : {:?}", results);
-        //for result in results {
-        //    println!(
-        //        "Matched endpoint: {} (similarity: {:.2})",
-        //        result.endpoint_id, result.similarity
-        //    );
-        //    println!("Pattern: {}", result.pattern);
-        //    if let Some(app) = result.parameters.get("app") {
-        //        println!("Application: {}", app);
-        //    }
-        //
-        //    println!("Message sent!");
-        //}
         process_search_results(results).await?;
     }
-
-    // Filter results above certain threshold
-    // let _filtered = results.iter()
-    // .filter(|r| r.similarity > 0.5)
-    // .collect::<Vec<_>>();
-
-    // Find best match
-    // if let Some(best_match) = results.iter().max_by(|a, b| {
-    //     a.similarity.partial_cmp(&b.similarity).unwrap()
-    // }) {
-    //     println!("Best match: {} ({:.2})", best_match.text, best_match.similarity);
-    // }
 
     Ok(())
 }
