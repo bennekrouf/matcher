@@ -44,7 +44,7 @@ lazy_static! {
 pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
     let client = IggyClientBuilder::new()
         .with_tcp()
-        .with_server_address("abjad.mayorana.ch:8090".to_string())
+        .with_server_address("iggy.mayorana.ch:8090".to_string())
         .build()?;
     client.connect().await?;
     client.login_user("iggy", "iggy").await?;
