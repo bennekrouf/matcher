@@ -56,7 +56,7 @@ impl matcher::matcher_server::Matcher for MatcherService {
 pub async fn start_grpc_server(
     config: Arc<Config>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::]:50030".parse()?;
+    let addr = "0.0.0.0:50030".parse()?;
 
     // Initialize VectorDB
     let db = Arc::new(
