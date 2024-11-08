@@ -1,6 +1,8 @@
 use std::collections::HashMap;
-use lazy_static::lazy_static;
-use regex::Regex;
+// use lazy_static::lazy_static;
+// use regex::Regex;
+use crate::filters::extract_app_name::extract_app_name;
+use crate::filters::extract_email::extract_email;
 
 #[derive(Debug)]
 pub struct ProcessedQuery {
@@ -8,18 +10,10 @@ pub struct ProcessedQuery {
     pub parameters: HashMap<String, String>,
 }
 
-lazy_static! {
-    static ref EMAIL_REGEX: Regex = Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
-    // Pattern for finding app names in French sentences
-    static ref APP_PATTERNS: Vec<(&'static str, &'static str)> = vec![
-        ("de ", ""), // "analyse de gpecs"
-        ("du ", ""), // "analyse du gpecs"
-        ("pour ", ""), // "analyse pour gpecs"
-        ("sur ", ""), // "analyse sur gpecs"
-        (" de l'application ", ""), // "analyse de l'application gpecs"
-        (" de l'app ", ""), // "analyse de l'app gpecs"
-    ];
-}
+//         (" de l'application ", ""), // "analyse de l'application gpecs"
+//         (" de l'app ", ""), // "analyse de l'app gpecs"
+//     ];
+// }
 
 pub fn preprocess_query(query: &str, language: &str) -> ProcessedQuery {
     let cleaned_text = match language {
@@ -81,41 +75,6 @@ fn preprocess_english(query: &str) -> String {
         .replace("  ", " ")
         .trim()
         .to_string()
-}
-
-fn extract_app_name(text: &str) -> Option<String> {
-    let text = text.to_lowercase();
-
-    for (prefix, suffix) in APP_PATTERNS.iter() {
-        if let Some(start_pos) = text.find(prefix) {
-            let start = start_pos + prefix.len();
-            let remaining = &text[start..];
-
-            // If there's a suffix, look for it
-            let end_pos = if suffix.is_empty() {
-                remaining.len()
-            } else {
-                remaining.find(suffix).unwrap_or(remaining.len())
-            };
-
-            let potential_app = remaining[..end_pos].trim();
-
-            // Basic validation of app name
-            if !potential_app.is_empty() 
-                && potential_app.len() >= 2  // Minimum length
-                && !potential_app.contains('@')  // Not an email
-                && !potential_app.contains(' ')  // Single word
-            {
-                return Some(potential_app.to_string());
-            }
-        }
-    }
-    None
-}
-
-fn extract_email(text: &str) -> Option<String> {
-    EMAIL_REGEX.find(text)
-        .map(|m| m.as_str().to_string())
 }
 
 #[cfg(test)]

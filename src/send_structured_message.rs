@@ -4,6 +4,7 @@ use iggy::clients::client::IggyClient;
 use iggy::messages::send_messages::Message;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use tracing::{info, error};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MessagePayload {
@@ -36,6 +37,13 @@ pub async fn send_structured_message(
     let message = Message::from_str(&json_payload)?;
     producer.send(vec![message]).await?;
 
-    println!("Sent message: {}", json_payload);
+    info!(
+        tenant = tenant,
+        topic = topic,
+        action = action,
+        payload = %json_payload,
+        "Successfully sent message"
+    );
+
     Ok(())
 }

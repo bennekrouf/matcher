@@ -1,5 +1,4 @@
 use std::{collections::HashMap, sync::Arc};
-// use serde::{Serialize, Deserialize};
 use anyhow::{Context, Result as AnyhowResult};
 use arrow_array::{Float32Array, RecordBatch, StringArray, FixedSizeListArray};
 use arrow_array::types::Float32Type;
@@ -9,20 +8,15 @@ use futures::StreamExt;
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{connect, Connection, DistanceType, Table};
 use arrow_array::Array;
-use regex::Regex;
-use lazy_static::lazy_static;
 
 use crate::preprocessing::preprocess_query;
 use crate::embeddings::get_embeddings;
 use crate::config::Config;
 use crate::config::Endpoint;
-use crate::extract_app_name::extract_app_name;
+use crate::filters::extract_parameters::extract_parameters;
 
 const VECTOR_SIZE: i32 = 384;
 
-lazy_static! {
-    static ref EMAIL_REGEX: Regex = Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
-}
 pub struct VectorDB {
     #[allow(dead_code)]
     connection: Connection,
@@ -237,51 +231,3 @@ impl VectorDB {
     }
 }
 
-fn extract_parameters(query: &str, pattern: &str) -> AnyhowResult<HashMap<String, String>> {
-    let mut params = HashMap::new();
-
-    // Check for email parameter
-    if pattern.contains("{email}") {
-        if let Some(email) = EMAIL_REGEX.find(query) {
-            params.insert("email".to_string(), email.as_str().to_string());
-        }
-    }
-
-    // Check for app parameter
-    if pattern.contains("{app}") {
-        if let Some(app) = extract_app_name(query) {
-            params.insert("app".to_string(), app);
-        }
-    }
-
-    Ok(params)
-}
-
-#[async_trait::async_trait]
-trait DatabaseHelper {
-    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool>;
-    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()>;
-}
-
-#[async_trait::async_trait]
-impl DatabaseHelper for Connection {
-    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool> {
-        match self.open_table(table_name).execute().await {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                if e.to_string().contains("Table not found") {
-                    Ok(false)
-                } else {
-                    Err(e.into())
-                }
-            }
-        }
-    }
-
-    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()> {
-        if self.table_exists(table_name).await? {
-            self.drop_table(table_name).await?;
-        }
-        Ok(())
-    }
-}
