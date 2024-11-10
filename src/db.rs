@@ -1,27 +1,27 @@
-use std::{collections::HashMap, sync::Arc};
-// use serde::{Serialize, Deserialize};
 use anyhow::{Context, Result as AnyhowResult};
-use arrow_array::{Float32Array, RecordBatch, StringArray, FixedSizeListArray};
-use arrow_array::types::Float32Type;
-use arrow_schema::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatchIterator;
+use arrow_array::types::Float32Type;
+use arrow_array::Array;
+use arrow_array::{FixedSizeListArray, Float32Array, RecordBatch, StringArray};
+use arrow_schema::{DataType, Field, Schema};
 use futures::StreamExt;
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{connect, Connection, DistanceType, Table};
-use arrow_array::Array;
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::preprocessing::preprocess_query;
-use crate::embeddings::get_embeddings;
 use crate::config::Config;
 use crate::config::Endpoint;
+use crate::embeddings::get_embeddings;
 use crate::extract_app_name::extract_app_name;
+use crate::preprocessing::preprocess_query;
 
 const VECTOR_SIZE: i32 = 384;
 
 lazy_static! {
-    static ref EMAIL_REGEX: Regex = Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
+    static ref EMAIL_REGEX: Regex =
+        Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
 }
 pub struct VectorDB {
     #[allow(dead_code)]
@@ -45,7 +45,6 @@ impl VectorDB {
         if with_init {
             if let Some(ref config) = config {
                 println!("Initializing database with endpoints from config...");
-
 
                 // Try to drop if exists, but don't fail if it doesn't
                 match connection.drop_table("patterns").await {
@@ -96,7 +95,6 @@ impl VectorDB {
             }
         }
 
-
         // Create patterns table
         let patterns_schema = Arc::new(Schema::new(vec![
             Field::new("endpoint_id", DataType::Utf8, false),
@@ -114,12 +112,13 @@ impl VectorDB {
         let ids: Vec<&str> = pattern_entries.iter().map(|(id, _)| id.as_str()).collect();
         let patterns: Vec<&str> = pattern_entries.iter().map(|(_, p)| p.as_str()).collect();
 
-
         let id_array = Arc::new(StringArray::from(ids));
         let pattern_array = Arc::new(StringArray::from(patterns));
         let vector_array = Arc::new(
             FixedSizeListArray::from_iter_primitive::<Float32Type, _, _>(
-                pattern_embeddings.iter().map(|vec| Some(vec.iter().copied().map(Some).collect::<Vec<_>>())),
+                pattern_embeddings
+                    .iter()
+                    .map(|vec| Some(vec.iter().copied().map(Some).collect::<Vec<_>>())),
                 VECTOR_SIZE,
             ),
         );
@@ -129,12 +128,16 @@ impl VectorDB {
             vec![id_array, pattern_array, vector_array],
         )?;
 
-         match connection.create_table(
-            "patterns",
-            Box::new(RecordBatchIterator::new(vec![Ok(pattern_batch)], patterns_schema)),
-        )
-        .execute()
-        .await 
+        match connection
+            .create_table(
+                "patterns",
+                Box::new(RecordBatchIterator::new(
+                    vec![Ok(pattern_batch)],
+                    patterns_schema,
+                )),
+            )
+            .execute()
+            .await
         {
             Ok(_) => println!("Table created successfully!"),
             Err(e) => {
@@ -146,7 +149,12 @@ impl VectorDB {
         Ok(())
     }
 
-    pub async fn search_similar(&self, query: &str, language: &str, limit: usize) -> AnyhowResult<Vec<SearchResult>> {
+    pub async fn search_similar(
+        &self,
+        query: &str,
+        language: &str,
+        limit: usize,
+    ) -> AnyhowResult<Vec<SearchResult>> {
         // First preprocess the query
         let processed = preprocess_query(query, language);
         println!("\nProcessed query: '{}'", processed.cleaned_text);
@@ -159,7 +167,8 @@ impl VectorDB {
         let query_embedding = get_embeddings(&processed.cleaned_text).await?;
 
         // Search patterns table
-        let mut results = self.patterns_table
+        let mut results = self
+            .patterns_table
             .vector_search(query_embedding)
             .context("Failed to create vector search")?
             .distance_type(DistanceType::Cosine)
@@ -257,31 +266,31 @@ fn extract_parameters(query: &str, pattern: &str) -> AnyhowResult<HashMap<String
     Ok(params)
 }
 
-#[async_trait::async_trait]
-trait DatabaseHelper {
-    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool>;
-    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()>;
-}
-
-#[async_trait::async_trait]
-impl DatabaseHelper for Connection {
-    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool> {
-        match self.open_table(table_name).execute().await {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                if e.to_string().contains("Table not found") {
-                    Ok(false)
-                } else {
-                    Err(e.into())
-                }
-            }
-        }
-    }
-
-    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()> {
-        if self.table_exists(table_name).await? {
-            self.drop_table(table_name).await?;
-        }
-        Ok(())
-    }
-}
+//#[async_trait::async_trait]
+//trait DatabaseHelper {
+//    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool>;
+//    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()>;
+//}
+//
+//#[async_trait::async_trait]
+//impl DatabaseHelper for Connection {
+//    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool> {
+//        match self.open_table(table_name).execute().await {
+//            Ok(_) => Ok(true),
+//            Err(e) => {
+//                if e.to_string().contains("Table not found") {
+//                    Ok(false)
+//                } else {
+//                    Err(e.into())
+//                }
+//            }
+//        }
+//    }
+//
+//    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()> {
+//        if self.table_exists(table_name).await? {
+//            self.drop_table(table_name).await?;
+//        }
+//        Ok(())
+//    }
+//}

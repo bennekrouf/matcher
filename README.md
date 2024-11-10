@@ -49,3 +49,6 @@ cargo run -- --reload --query "Je voudrais effectuer un calcul" --language fr
 
 
 ./target/debug/matcher --query "envoie le document par email à fawzan@gmail.com"
+
+
+./target/debug/matcher --server

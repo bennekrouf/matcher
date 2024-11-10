@@ -2,25 +2,22 @@ mod config;
 mod db;
 mod embeddings;
 mod extract_app_name;
+mod grpc_server;
 mod model;
 mod preprocessing;
+mod process_search_results;
 mod send_structured_message;
-mod grpc_server;
 #[cfg(test)]
 mod tests;
 
-use iggy::clients::builder::IggyClientBuilder;
-use std::sync::Arc;
+use crate::config::Config;
+use crate::db::VectorDB;
+use crate::model::load_model;
 use anyhow::Result as AnyhowResult;
 use clap::Parser;
 use lazy_static::lazy_static;
-use crate::send_structured_message::send_structured_message;
-use crate::db::SearchResult;
-use crate::db::VectorDB;
-use crate::config::Config;
-use crate::model::load_model;
-use iggy::client::UserClient;
-use iggy::client::Client;
+use process_search_results::process_search_results;
+use std::sync::Arc;
 
 const MODEL_PATH: &str = "models/multilingual-MiniLM";
 const CONFIG_PATH: &str = "endpoints.yaml";
@@ -78,37 +75,6 @@ async fn main() -> AnyhowResult<()> {
             let results = db.search_similar(&query, &args.language, 1).await?;
             process_search_results(results).await?;
         }
-    }
-
-    Ok(())
-}
-
-async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
-    //let client = IggyClient::default();
-    let client = IggyClientBuilder::new()
-        .with_tcp()
-        .with_server_address("abjad.mayorana.ch:8090".to_string())
-        .build()?;
-    client.connect().await?;
-    client.login_user("iggy", "iggy").await?;
-
-    for result in results {
-        // Convert parameters to message format using the endpoint_id directly
-        let message_params: Vec<String> = result.parameters.values().cloned().collect();
-
-        send_structured_message(
-            &client,
-            "gibro",
-            "notification",
-            &result.endpoint_id, // Use the endpoint_id directly as the action
-            message_params,
-        )
-        .await?;
-
-        println!(
-            "Sent notification for endpoint: {} with similarity: {}",
-            result.endpoint_id, result.similarity
-        );
     }
 
     Ok(())
