@@ -1,7 +1,8 @@
 use crate::db::SearchResult;
 use crate::model::load_model;
 use crate::send_structured_message::send_structured_message;
-use anyhow::Result as AnyhowResult;
+//use anyhow::Result as AnyhowResult;
+use anyhow::{anyhow, Result as AnyhowResult};
 use clap::Parser;
 use iggy::client::Client;
 use iggy::client::UserClient;
@@ -40,31 +41,69 @@ lazy_static! {
 }
 
 pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
-    let client = IggyClientBuilder::new()
+    // Only proceed with the best match (first result)
+    let best_match = if let Some(result) = results.first() {
+        result
+    } else {
+        return Ok(()); // No results to process
+    };
+
+    println!(
+        "Processing best match with similarity: {}",
+        best_match.similarity
+    );
+
+    let client = match IggyClientBuilder::new()
         .with_tcp()
-        .with_server_address("abjad.mayorana.ch:8090".to_string())
-        .build()?;
-    client.connect().await?;
-    client.login_user("iggy", "iggy").await?;
+        .with_server_address("iggy.mayorana.ch:8090".to_string())
+        .build()
+    {
+        Ok(client) => {
+            println!("Successfully built Iggy client");
+            client
+        }
+        Err(e) => {
+            eprintln!("Failed to build Iggy client: {}", e);
+            return Err(anyhow!("Failed to build Iggy client: {}", e));
+        }
+    };
 
-    for result in results {
-        // Convert parameters to message format using the endpoint_id directly
-        let message_params: Vec<String> = result.parameters.values().cloned().collect();
-
-        send_structured_message(
-            &client,
-            "gibro",
-            "notification",
-            &result.endpoint_id, // Use the endpoint_id directly as the action
-            message_params,
-        )
-        .await?;
-
-        println!(
-            "Sent notification for endpoint: {} with similarity: {}",
-            result.endpoint_id, result.similarity
-        );
+    match client.connect().await {
+        Ok(_) => println!("Successfully connected to Iggy server"),
+        Err(e) => {
+            eprintln!("Failed to connect to Iggy server: {}", e);
+            eprintln!("This could be due to network issues or server being unreachable");
+            return Err(anyhow!("Connection failed: {}", e));
+        }
     }
 
+    if let Err(e) = client.login_user("iggy", "iggy").await {
+        eprintln!("Failed to login to Iggy: {}", e);
+        return Err(anyhow!("Login failed: {}", e));
+    }
+    println!("Logged in to Iggy");
+
+    let message_params: Vec<String> = best_match.parameters.values().cloned().collect();
+    if let Err(e) = send_structured_message(
+        &client,
+        "gibro",
+        "notification",
+        &best_match.endpoint_id,
+        message_params,
+    )
+    .await
+    {
+        eprintln!(
+            "Failed to send message for endpoint {}: {}",
+            best_match.endpoint_id, e
+        );
+        return Err(anyhow!("Message sending failed: {}", e));
+    }
+    println!(
+        "Sent notification for endpoint: {} with similarity: {}",
+        best_match.endpoint_id, best_match.similarity
+    );
+
+    println!("Completed processing best match");
     Ok(())
 }

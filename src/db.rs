@@ -30,7 +30,7 @@ pub struct VectorDB {
     patterns_table: Table,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SearchResult {
     pub endpoint_id: String,
     pub pattern: String,
@@ -155,18 +155,16 @@ impl VectorDB {
         language: &str,
         limit: usize,
     ) -> AnyhowResult<Vec<SearchResult>> {
-        // First preprocess the query
         let processed = preprocess_query(query, language);
         println!("\nProcessed query: '{}'", processed.cleaned_text);
 
-        // Log extracted parameters
         for (param_name, param_value) in &processed.parameters {
-            println!("Detected {}: {}", param_name, param_value);
+            println!("!!! Detected {}: {}", param_name, param_value);
         }
 
         let query_embedding = get_embeddings(&processed.cleaned_text).await?;
+        println!("Generated query embedding, starting vector search...");
 
-        // Search patterns table
         let mut results = self
             .patterns_table
             .vector_search(query_embedding)
@@ -176,9 +174,12 @@ impl VectorDB {
             .execute()
             .await?;
 
+        println!("Vector search completed, processing results...");
         let mut matches = Vec::new();
 
         while let Some(Ok(rb)) = results.next().await {
+            println!("Processing record batch...");
+
             let endpoint_id_column = rb
                 .column_by_name("endpoint_id")
                 .unwrap()
@@ -200,37 +201,47 @@ impl VectorDB {
                 .downcast_ref::<Float32Array>()
                 .unwrap();
 
+            println!("Found {} results in batch", pattern_column.len());
+
             for i in 0..pattern_column.len() {
                 let pattern = pattern_column.value(i);
                 let endpoint_id = endpoint_id_column.value(i);
                 let similarity = 1.0 - distance_column.value(i);
 
-                // Start with parameters from preprocessing
+                println!(
+                    "Processing result {}: pattern='{}', endpoint='{}', similarity={}",
+                    i, pattern, endpoint_id, similarity
+                );
+
                 let mut parameters = processed.parameters.clone();
 
-                // Add any missing parameters using pattern-based extraction
                 if !parameters.is_empty() {
                     let pattern_params = extract_parameters(&processed.cleaned_text, pattern)?;
                     for (key, value) in pattern_params {
                         if !parameters.contains_key(&key) {
+                            println!("Adding pattern param: {}={}", key, value);
                             parameters.insert(key, value);
                         }
                     }
                 } else {
                     parameters = extract_parameters(&processed.cleaned_text, pattern)?;
+                    println!("Extracted parameters from pattern: {:?}", parameters);
                 }
 
-                // Check if all required parameters are present
                 let has_required_params = match pattern {
                     p if p.contains("{app}") => parameters.contains_key("app"),
                     p if p.contains("{email}") => parameters.contains_key("email"),
                     _ => true,
                 };
 
+                println!("Has required params: {}", has_required_params);
+
                 if !has_required_params {
+                    println!("Skipping result due to missing required parameters");
                     continue;
                 }
 
+                println!("Adding match to results");
                 matches.push(SearchResult {
                     endpoint_id: endpoint_id.to_string(),
                     pattern: pattern.to_string(),
@@ -240,7 +251,7 @@ impl VectorDB {
             }
         }
 
-        // Sort by similarity
+        println!("Final matches count: {}", matches.len());
         matches.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
         Ok(matches)
     }
@@ -265,32 +276,3 @@ fn extract_parameters(query: &str, pattern: &str) -> AnyhowResult<HashMap<String
 
     Ok(params)
 }
-
-//#[async_trait::async_trait]
-//trait DatabaseHelper {
-//    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool>;
-//    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()>;
-//}
-//
-//#[async_trait::async_trait]
-//impl DatabaseHelper for Connection {
-//    async fn table_exists(&self, table_name: &str) -> AnyhowResult<bool> {
-//        match self.open_table(table_name).execute().await {
-//            Ok(_) => Ok(true),
-//            Err(e) => {
-//                if e.to_string().contains("Table not found") {
-//                    Ok(false)
-//                } else {
-//                    Err(e.into())
-//                }
-//            }
-//        }
-//    }
-//
-//    async fn ensure_table_dropped(&self, table_name: &str) -> AnyhowResult<()> {
-//        if self.table_exists(table_name).await? {
-//            self.drop_table(table_name).await?;
-//        }
-//        Ok(())
-//    }
-//}

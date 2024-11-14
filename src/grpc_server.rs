@@ -1,14 +1,12 @@
-
+use crate::config::Config;
+use crate::db::VectorDB;
+use crate::process_search_results;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 use tonic_reflection::server::Builder as ReflectionBuilder;
-use tracing::info;
-use crate::process_search_results;
-use crate::config::Config;
-use crate::db::VectorDB;
+use tracing::{debug, error, info, warn};
 
-// Import the generated proto code
 pub mod matcher {
     tonic::include_proto!("matcher");
 }
@@ -25,50 +23,85 @@ impl matcher::matcher_server::Matcher for MatcherService {
         request: Request<matcher::MatchRequest>,
     ) -> Result<Response<matcher::MatchResponse>, Status> {
         let req = request.into_inner();
+        info!(
+            "Received match request - query: {}, language: {}, show_all_matches: {}",
+            req.query, req.language, req.show_all_matches
+        );
 
-        // Search for similar endpoints
-        let results = self.db.search_similar(&req.query, &req.language, if req.show_all_matches { 5 } else { 1 })
+        let results = match self
+            .db
+            .search_similar(
+                &req.query,
+                &req.language,
+                if req.show_all_matches { 5 } else { 1 },
+            )
             .await
-            .map_err(|e| Status::internal(format!("Search failed: {}", e)))?;
+        {
+            Ok(results) => {
+                if results.is_empty() {
+                    warn!("No matches found for query: {}", req.query);
+                } else {
+                    debug!("Found {} matches", results.len());
+                    for (i, result) in results.iter().enumerate() {
+                        debug!(
+                            "Match {}: id={}, similarity={:.4}",
+                            i + 1,
+                            result.endpoint_id,
+                            result.similarity
+                        );
+                    }
+                }
+                results
+            }
+            Err(e) => {
+                error!("Search failed: {}", e);
+                return Err(Status::internal(format!("Search failed: {}", e)));
+            }
+        };
 
-        // Convert search results to response format
         let matches: Vec<matcher::EndpointMatch> = results
             .iter()
-            .map(|result| matcher::EndpointMatch {
-                endpoint_id: result.endpoint_id.clone(),
-                similarity: result.similarity as f64,
-                parameters: result.parameters.clone(),
+            .map(|result| {
+                let match_data = matcher::EndpointMatch {
+                    endpoint_id: result.endpoint_id.clone(),
+                    similarity: result.similarity as f64,
+                    parameters: result.parameters.clone(),
+                };
+                debug!(
+                    "Created match response: id={}, similarity={:.4}",
+                    match_data.endpoint_id, match_data.similarity
+                );
+                match_data
             })
             .collect();
 
-        // Process matches through Iggy if needed
-        if !matches.is_empty() {
-            if let Err(e) = process_search_results(results).await {
-                eprintln!("Failed to process results through Iggy: {}", e);
-                // Don't return error, continue with response
+        // Process only the best match through Iggy if available
+        if let Some(best_result) = results.first() {
+            info!("Processing best match through Iggy");
+            if let Err(e) = process_search_results(vec![best_result.clone()]).await {
+                error!("Failed to process best result through Iggy: {}", e);
             }
         }
 
+        info!("Returning response with {} matches", matches.len());
         Ok(Response::new(matcher::MatchResponse { matches }))
     }
 }
 
-pub async fn start_grpc_server(
-    config: Arc<Config>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::]:50030".parse()?;
+    info!("Initializing VectorDB");
 
     // Initialize VectorDB
-    let db = Arc::new(
-        VectorDB::new("data/mydb", Some((*config).clone()), false)
-            .await
-            .expect("Failed to initialize VectorDB")
-    );
-
-    let matcher_service = MatcherService {
-        config,
-        db,
+    let db = match VectorDB::new("data/mydb", Some((*config).clone()), false).await {
+        Ok(db) => Arc::new(db),
+        Err(e) => {
+            error!("Failed to initialize VectorDB: {}", e);
+            return Err(e.into());
+        }
     };
+
+    let matcher_service = MatcherService { config, db };
 
     // Get the file descriptor set
     let descriptor_set = include_bytes!(concat!(env!("OUT_DIR"), "/matcher_descriptor.bin"));
@@ -89,4 +122,3 @@ pub async fn start_grpc_server(
     info!("gRPC server has been shut down");
     Ok(())
 }
-

@@ -5,7 +5,6 @@ use crate::AI;
 
 pub async fn get_embeddings(sentence: &str) -> AnyhowResult<Vec<f32>> {
     let (model, tokenizer) = &*AI;
-
     let tokens = tokenizer
         .encode_batch(vec![sentence], true)
         .map_err(|e| anyhow::anyhow!("Failed to encode sentence: {}", e))?;
