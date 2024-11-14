@@ -1,8 +1,7 @@
-//<<<<<<< HEAD
+use crate::config::Parameter;
 use crate::db::SearchResult;
 use crate::model::load_model;
 use crate::send_structured_message::send_structured_message;
-//use anyhow::Result as AnyhowResult;
 use anyhow::{anyhow, Result as AnyhowResult};
 use clap::Parser;
 use iggy::client::Client;
@@ -10,19 +9,6 @@ use iggy::client::UserClient;
 use iggy::clients::builder::IggyClientBuilder;
 use lazy_static::lazy_static;
 use tracing::{error, info};
-//=======
-//use iggy::clients::builder::IggyClientBuilder;
-//use anyhow::Result as AnyhowResult;
-//use clap::Parser;
-//use lazy_static::lazy_static;
-//use crate::send_structured_message::send_structured_message;
-use crate::config::Parameter;
-//use crate::db::SearchResult;
-//use crate::model::load_model;
-//use iggy::client::UserClient;
-//use iggy::client::Client;
-//use tracing::info;
-//>>>>>>> b3a0ff03593d3d4716c3a272cf19a5fcb8d946e2
 
 #[derive(Parser)]
 #[command(
@@ -96,7 +82,6 @@ pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<
     }
     info!("Logged in to Iggy");
 
-    //let message_params: Vec<String> = best_match.parameters.values().cloned().collect();
     let message_params: Vec<Parameter> = best_match
         .parameters
         .iter()
