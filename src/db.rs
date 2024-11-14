@@ -14,7 +14,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::config::Config;
 use crate::config::Endpoint;
 use crate::embeddings::get_embeddings;
-use crate::extract_app_name::extract_app_name;
+use crate::filters::extract_app_name::extract_app_name;
 use crate::preprocessing::preprocess_query;
 
 const VECTOR_SIZE: i32 = 384;
@@ -23,11 +23,12 @@ lazy_static! {
     static ref EMAIL_REGEX: Regex =
         Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
 }
+
 pub struct VectorDB {
     #[allow(dead_code)]
     connection: Connection,
-    // endpoints_table: Table,
     patterns_table: Table,
+    endpoints: HashMap<String, Endpoint>,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +37,8 @@ pub struct SearchResult {
     pub pattern: String,
     pub similarity: f32,
     pub parameters: HashMap<String, String>,
+    pub text: String,
+    pub description: String,
 }
 
 impl VectorDB {
@@ -64,7 +67,7 @@ impl VectorDB {
                 // If table doesn't exist and we have config, create it
                 if e.to_string().contains("Table not found") && config.is_some() {
                     println!("Table not found, creating new one...");
-                    Self::initialize_table(&connection, &config.unwrap().endpoints).await?;
+                    Self::initialize_table(&connection, &config.clone().unwrap().endpoints).await?;
                     connection.open_table("patterns").execute().await?
                 } else {
                     return Err(e.into());
@@ -72,33 +75,58 @@ impl VectorDB {
             }
         };
 
+        let endpoints = if let Some(ref config) = config {
+            config
+                .endpoints
+                .iter()
+                .map(|e| (e.id.clone(), e.clone()))
+                .collect()
+        } else {
+            HashMap::new()
+        };
+
         Ok(Self {
             connection,
             patterns_table,
+            endpoints,
         })
     }
 
     async fn initialize_table(connection: &Connection, endpoints: &[Endpoint]) -> AnyhowResult<()> {
         println!("Generating embeddings...");
 
+        // Define structure for pattern entries
+        struct PatternEntry {
+            endpoint_id: String,
+            pattern: String,
+            text: String,
+            description: String,
+            embedding: Vec<f32>,
+        }
+
         // Prepare data for patterns table
         let mut pattern_entries = Vec::new();
-        let mut pattern_embeddings = Vec::new();
 
         for endpoint in endpoints {
             println!("\nProcessing endpoint: {}", endpoint.id);
             for pattern in &endpoint.patterns {
                 println!("  Adding pattern: '{}'", pattern);
                 let embedding = get_embeddings(pattern).await?;
-                pattern_entries.push((endpoint.id.clone(), pattern.clone()));
-                pattern_embeddings.push(embedding);
+                pattern_entries.push(PatternEntry {
+                    endpoint_id: endpoint.id.clone(),
+                    pattern: pattern.clone(),
+                    text: endpoint.text.clone(),
+                    description: endpoint.description.clone(),
+                    embedding,
+                });
             }
         }
 
-        // Create patterns table
         let patterns_schema = Arc::new(Schema::new(vec![
             Field::new("endpoint_id", DataType::Utf8, false),
             Field::new("pattern", DataType::Utf8, false),
+            Field::new("text", DataType::Utf8, false),
+            Field::new("description", DataType::Utf8, false),
             Field::new(
                 "vector",
                 DataType::FixedSizeList(
@@ -109,23 +137,39 @@ impl VectorDB {
             ),
         ]));
 
-        let ids: Vec<&str> = pattern_entries.iter().map(|(id, _)| id.as_str()).collect();
-        let patterns: Vec<&str> = pattern_entries.iter().map(|(_, p)| p.as_str()).collect();
+        let ids: Vec<&str> = pattern_entries
+            .iter()
+            .map(|e| e.endpoint_id.as_str())
+            .collect();
+        let patterns: Vec<&str> = pattern_entries.iter().map(|e| e.pattern.as_str()).collect();
+        let texts: Vec<&str> = pattern_entries.iter().map(|e| e.text.as_str()).collect();
+        let descriptions: Vec<&str> = pattern_entries
+            .iter()
+            .map(|e| e.description.as_str())
+            .collect();
 
         let id_array = Arc::new(StringArray::from(ids));
         let pattern_array = Arc::new(StringArray::from(patterns));
+        let text_array = Arc::new(StringArray::from(texts));
+        let description_array = Arc::new(StringArray::from(descriptions));
         let vector_array = Arc::new(
             FixedSizeListArray::from_iter_primitive::<Float32Type, _, _>(
-                pattern_embeddings
+                pattern_entries
                     .iter()
-                    .map(|vec| Some(vec.iter().copied().map(Some).collect::<Vec<_>>())),
+                    .map(|e| Some(e.embedding.iter().copied().map(Some).collect::<Vec<_>>())),
                 VECTOR_SIZE,
             ),
         );
 
         let pattern_batch = RecordBatch::try_new(
             patterns_schema.clone(),
-            vec![id_array, pattern_array, vector_array],
+            vec![
+                id_array,
+                pattern_array,
+                text_array,
+                description_array,
+                vector_array,
+            ],
         )?;
 
         match connection
@@ -182,24 +226,24 @@ impl VectorDB {
 
             let endpoint_id_column = rb
                 .column_by_name("endpoint_id")
-                .unwrap()
+                .context("endpoint_id column not found")?
                 .as_any()
                 .downcast_ref::<StringArray>()
-                .unwrap();
+                .context("Failed to downcast endpoint_id column")?;
 
             let pattern_column = rb
                 .column_by_name("pattern")
-                .unwrap()
+                .context("pattern column not found")?
                 .as_any()
                 .downcast_ref::<StringArray>()
-                .unwrap();
+                .context("Failed to downcast pattern column")?;
 
             let distance_column = rb
                 .column_by_name("_distance")
-                .unwrap()
+                .context("_distance column not found")?
                 .as_any()
                 .downcast_ref::<Float32Array>()
-                .unwrap();
+                .context("Failed to downcast distance column")?;
 
             println!("Found {} results in batch", pattern_column.len());
 
@@ -208,11 +252,21 @@ impl VectorDB {
                 let endpoint_id = endpoint_id_column.value(i);
                 let similarity = 1.0 - distance_column.value(i);
 
+                //<<<<<<< HEAD
                 println!(
                     "Processing result {}: pattern='{}', endpoint='{}', similarity={}",
                     i, pattern, endpoint_id, similarity
                 );
 
+                //=======
+                // Get endpoint data from the cached endpoints
+                let endpoint = self
+                    .endpoints
+                    .get(endpoint_id)
+                    .context(format!("Endpoint not found: {}", endpoint_id))?;
+
+                // Start with parameters from preprocessing
+                //>>>>>>> b3a0ff03593d3d4716c3a272cf19a5fcb8d946e2
                 let mut parameters = processed.parameters.clone();
 
                 if !parameters.is_empty() {
@@ -247,6 +301,8 @@ impl VectorDB {
                     pattern: pattern.to_string(),
                     similarity,
                     parameters,
+                    text: endpoint.text.clone(),
+                    description: endpoint.description.clone(),
                 });
             }
         }

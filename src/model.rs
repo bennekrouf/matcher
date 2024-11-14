@@ -5,8 +5,8 @@ use candle_transformers::models::bert::{BertModel, Config, DTYPE};
 use std::path::Path;
 use tokenizers::PaddingParams;
 use tokenizers::Tokenizer;
-
-use crate::MODEL_PATH;
+use crate::constants::MODEL_PATH;
+// use crate::MODEL_PATH;
 
 pub fn load_model() -> AnyhowResult<(BertModel, Tokenizer)> {
     let model_path = Path::new(MODEL_PATH);

@@ -4,9 +4,12 @@ use std::path::Path;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Parameter {
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub required: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,  // Add this field, optional for YAML but used when sending
 }
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Endpoint {
@@ -23,13 +26,6 @@ pub struct Endpoint {
 pub struct Config {
     pub endpoints: Vec<Endpoint>,
 }
-
-// impl Config {
-//     pub fn load_from_yaml<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-//         let f = std::fs::File::open(path)?;
-//         Ok(serde_yaml::from_reader(f)?)
-//     }
-// }
 
 impl Endpoint {
     // Helper method to validate patterns
@@ -54,16 +50,6 @@ impl Endpoint {
 
         Ok(())
     }
-
-    // Helper to check if a pattern requires a specific parameter
-    // pub fn has_parameter(&self, name: &str) -> bool {
-    //     self.parameters.iter().any(|p| p.name == name)
-    // }
-
-    // Helper to get parameter details
-    // pub fn get_parameter(&self, name: &str) -> Option<&Parameter> {
-    //     self.parameters.iter().find(|p| p.name == name)
-    // }
 }
 
 impl Config {

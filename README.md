@@ -15,18 +15,14 @@ curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-Min
 curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json -o models/multilingual-MiniLM/tokenizer.json
 curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/pytorch_model.bin -o models/multilingual-MiniLM/model.ot
 
-cargo run -- --reload
+cargo run -- --query "execute la meilleure analyse de gpecs"
 
-cargo run -- --reload --query "run the best analysis"
+cargo run -- --reload --debug --all --query "fait une analyse de gpecs"
 
-cargo run -- --reload --debug --all --query "run an analysis"
-
-./target/debug/matcher --help
-./target/debug/matcher --query "run analysis"
-./target/debug/matcher --reload --query "run analysis"
 
 # Show help
 matcher --help
+./target/debug/matcher --help
 
 # Show version
 matcher --version
@@ -35,17 +31,14 @@ matcher --version
 matcher -q "run analysis"
 
 # Verbose output with multiple results
-matcher -q "run analysis" -v --limit 3
-
-# Reload database with verbose output
-matcher --reload -q "run analysis" -v
+matcher -q "execute une analyse de gpecs"
 
 
 # Test French queries => FR !!!
-cargo run -- --query "Pourriez-vous lancer l'analyse" --language fr
+cargo run -- --query "Pourriez-vous lancer l'analyse de toto" --language fr
 
 # Test with database reload
-cargo run -- --reload --query "Je voudrais effectuer un calcul" --language fr
+cargo run -- --reload --query "Je voudrais effectuer un calcul de titi" --language fr
 
 
 ./target/debug/matcher --query "envoie le document par email à fawzan@gmail.com"

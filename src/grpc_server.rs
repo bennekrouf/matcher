@@ -88,9 +88,16 @@ impl matcher::matcher_server::Matcher for MatcherService {
     }
 }
 
+//<<<<<<< HEAD
 pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::]:50030".parse()?;
     info!("Initializing VectorDB");
+    //=======
+    //pub async fn start_grpc_server(
+    //    config: Arc<Config>,
+    //) -> Result<(), Box<dyn std::error::Error>> {
+    //    let addr = "0.0.0.0:50030".parse()?;
+    //>>>>>>> b3a0ff03593d3d4716c3a272cf19a5fcb8d946e2
 
     // Initialize VectorDB
     let db = match VectorDB::new("data/mydb", Some((*config).clone()), false).await {

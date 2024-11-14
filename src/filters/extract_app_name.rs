@@ -1,8 +1,6 @@
 use lazy_static::lazy_static;
-use regex::Regex;
 
 lazy_static! {
-    static ref EMAIL_REGEX: Regex = Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
     // Pattern for finding app names in French sentences
     static ref APP_PATTERNS: Vec<(&'static str, &'static str)> = vec![
         ("de ", ""), // "analyse de gpecs"

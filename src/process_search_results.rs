@@ -1,3 +1,4 @@
+//<<<<<<< HEAD
 use crate::db::SearchResult;
 use crate::model::load_model;
 use crate::send_structured_message::send_structured_message;
@@ -8,6 +9,20 @@ use iggy::client::Client;
 use iggy::client::UserClient;
 use iggy::clients::builder::IggyClientBuilder;
 use lazy_static::lazy_static;
+use tracing::{error, info};
+//=======
+//use iggy::clients::builder::IggyClientBuilder;
+//use anyhow::Result as AnyhowResult;
+//use clap::Parser;
+//use lazy_static::lazy_static;
+//use crate::send_structured_message::send_structured_message;
+use crate::config::Parameter;
+//use crate::db::SearchResult;
+//use crate::model::load_model;
+//use iggy::client::UserClient;
+//use iggy::client::Client;
+//use tracing::info;
+//>>>>>>> b3a0ff03593d3d4716c3a272cf19a5fcb8d946e2
 
 #[derive(Parser)]
 #[command(
@@ -41,14 +56,13 @@ lazy_static! {
 }
 
 pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
-    // Only proceed with the best match (first result)
     let best_match = if let Some(result) = results.first() {
         result
     } else {
-        return Ok(()); // No results to process
+        return Ok(());
     };
 
-    println!(
+    info!(
         "Processing best match with similarity: {}",
         best_match.similarity
     );
@@ -59,51 +73,56 @@ pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<
         .build()
     {
         Ok(client) => {
-            println!("Successfully built Iggy client");
+            info!("Successfully built Iggy client");
             client
         }
         Err(e) => {
-            eprintln!("Failed to build Iggy client: {}", e);
+            error!("Failed to build Iggy client: {}", e);
             return Err(anyhow!("Failed to build Iggy client: {}", e));
         }
     };
 
     match client.connect().await {
-        Ok(_) => println!("Successfully connected to Iggy server"),
+        Ok(_) => info!("Connected to Iggy server"),
         Err(e) => {
-            eprintln!("Failed to connect to Iggy server: {}", e);
-            eprintln!("This could be due to network issues or server being unreachable");
+            error!("Failed to connect to Iggy server: {}", e);
             return Err(anyhow!("Connection failed: {}", e));
         }
     }
 
     if let Err(e) = client.login_user("iggy", "iggy").await {
-        eprintln!("Failed to login to Iggy: {}", e);
+        error!("Failed to login to Iggy: {}", e);
         return Err(anyhow!("Login failed: {}", e));
     }
-    println!("Logged in to Iggy");
+    info!("Logged in to Iggy");
 
-    let message_params: Vec<String> = best_match.parameters.values().cloned().collect();
-    if let Err(e) = send_structured_message(
+    //let message_params: Vec<String> = best_match.parameters.values().cloned().collect();
+    let message_params: Vec<Parameter> = best_match
+        .parameters
+        .iter()
+        .map(|(name, value)| Parameter {
+            name: name.clone(),
+            value: Some(value.clone()),
+            description: None,
+            required: true,
+        })
+        .collect();
+
+    send_structured_message(
         &client,
         "gibro",
         "notification",
         &best_match.endpoint_id,
+        &best_match.text,
+        &best_match.description,
         message_params,
     )
-    .await
-    {
-        eprintln!(
-            "Failed to send message for endpoint {}: {}",
-            best_match.endpoint_id, e
-        );
-        return Err(anyhow!("Message sending failed: {}", e));
-    }
-    println!(
-        "Sent notification for endpoint: {} with similarity: {}",
-        best_match.endpoint_id, best_match.similarity
+    .await?;
+
+    info!(
+        "Sent notification for endpoint: {} with similarity: {} and pattern: {}",
+        best_match.endpoint_id, best_match.similarity, best_match.pattern
     );
 
-    println!("Completed processing best match");
     Ok(())
 }
