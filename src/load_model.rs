@@ -1,3 +1,4 @@
+use crate::constants::MODEL_PATH;
 use anyhow::Result as AnyhowResult;
 use candle_core::Device;
 use candle_nn::VarBuilder;
@@ -5,8 +6,6 @@ use candle_transformers::models::bert::{BertModel, Config, DTYPE};
 use std::path::Path;
 use tokenizers::PaddingParams;
 use tokenizers::Tokenizer;
-use crate::constants::MODEL_PATH;
-// use crate::MODEL_PATH;
 
 pub fn load_model() -> AnyhowResult<(BertModel, Tokenizer)> {
     let model_path = Path::new(MODEL_PATH);
@@ -16,13 +15,22 @@ pub fn load_model() -> AnyhowResult<(BertModel, Tokenizer)> {
     let weights_path = model_path.join("model.ot");
 
     if !config_path.exists() {
-        return Err(anyhow::anyhow!("Config file not found at {:?}", config_path));
+        return Err(anyhow::anyhow!(
+            "Config file not found at {:?}",
+            config_path
+        ));
     }
     if !tokenizer_path.exists() {
-        return Err(anyhow::anyhow!("Tokenizer file not found at {:?}", tokenizer_path));
+        return Err(anyhow::anyhow!(
+            "Tokenizer file not found at {:?}",
+            tokenizer_path
+        ));
     }
     if !weights_path.exists() {
-        return Err(anyhow::anyhow!("Model weights not found at {:?}", weights_path));
+        return Err(anyhow::anyhow!(
+            "Model weights not found at {:?}",
+            weights_path
+        ));
     }
 
     let config = std::fs::read_to_string(config_path)?;

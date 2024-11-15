@@ -1,29 +1,30 @@
 mod cli;
 mod config;
 mod constants;
-mod db;
 mod embeddings;
 mod filters;
-mod grpc_server;
-mod model;
+mod grpc;
+mod load_model;
+mod matcher_service;
 mod preprocessing;
 mod process_search_results;
 mod send_structured_message;
+
 #[cfg(test)]
 mod tests;
+mod vector_db;
 
 use crate::config::Config;
-use crate::db::VectorDB;
-use crate::model::load_model;
+use crate::load_model::load_model;
+use crate::vector_db::db::VectorDB;
 use anyhow::Result as AnyhowResult;
 use clap::Parser;
+use grpc::start_grpc_server::start_grpc_server;
 use lazy_static::lazy_static;
 use process_search_results::process_search_results;
 use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
-const MODEL_PATH: &str = "models/multilingual-MiniLM";
-const CONFIG_PATH: &str = "endpoints.yaml";
+use vector_db::SearchResult;
 
 #[derive(Parser)]
 #[command(
@@ -58,7 +59,7 @@ lazy_static! {
 
 fn setup_logging() {
     let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,your_crate_name=debug"));
+        .unwrap_or_else(|_| EnvFilter::new("debug,your_crate_name=debug"));
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
         .with(filter)
@@ -70,18 +71,16 @@ async fn main() -> AnyhowResult<()> {
     setup_logging();
     let args = cli::parse_args();
     let (model_path, config_path) = cli::get_paths();
-
     if args.debug {
         println!("Debug mode enabled");
         println!("Loading model from: {}", model_path);
     }
-
     let config = Arc::new(Config::load_from_yaml(config_path)?);
 
     match (args.server, args.query) {
         (true, _) => {
             println!("Starting gRPC server...");
-            if let Err(e) = grpc_server::start_grpc_server(config).await {
+            if let Err(e) = start_grpc_server(config).await {
                 eprintln!("Failed to start gRPC server: {}", e);
                 std::process::exit(1);
             }
@@ -89,10 +88,16 @@ async fn main() -> AnyhowResult<()> {
         (false, Some(query)) => {
             let db = VectorDB::new("data/mydb", Some(config.as_ref().clone()), args.reload).await?;
             println!("\nExecuting vector search...");
-            let results = db
+            let match_results = db
                 .search_similar(&query, &args.language, if args.all { 5 } else { 1 })
                 .await?;
-            process_search_results(results).await?;
+
+            // Convert MatchResult to SearchResult
+            let search_results: Vec<SearchResult> = match_results
+                .into_iter()
+                .map(|m| m.search_result().clone())
+                .collect();
+            process_search_results(search_results).await?;
         }
         (false, None) => {
             eprintln!("Error: Either --server or --query must be specified");

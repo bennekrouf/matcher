@@ -1,7 +1,7 @@
 use crate::config::Parameter;
-use crate::db::SearchResult;
-use crate::model::load_model;
+use crate::load_model::load_model;
 use crate::send_structured_message::send_structured_message;
+use crate::vector_db::search_result::SearchResult;
 use anyhow::{anyhow, Result as AnyhowResult};
 use clap::Parser;
 use iggy::client::Client;
@@ -16,7 +16,7 @@ use tracing::{error, info};
     about = "Match natural language queries to endpoints",
     long_about = "A tool for semantically matching natural language queries to API endpoints using embeddings",
     version,
-    author = "Your Name <your.email@example.com>",
+    author = "Mohamed <mb@mayorana.ch>",
     help_template = "{about}\n\nUSAGE:\n    {usage}\n\n{options}"
 )]
 struct Args {

@@ -5,11 +5,11 @@ use std::path::Path;
 pub struct Parameter {
     pub name: String,
     pub description: Option<String>,
+    #[serde(default)]
     pub required: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,  // Add this field, optional for YAML but used when sending
+    pub value: Option<String>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Endpoint {

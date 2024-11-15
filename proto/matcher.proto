@@ -20,4 +20,9 @@ message EndpointMatch {
     string endpoint_id = 1;
     double similarity = 2;
     map<string, string> parameters = 3;
+    bool is_partial_match = 4;          // Added to indicate if it's a partial match
+    repeated string missing_parameters = 5;  // Added to list missing required parameters
+    string pattern = 6;                 // Added to show the matching pattern
+    string text = 7;                    // Added to show the action text
+    string description = 8;             // Added to provide more context
 }
