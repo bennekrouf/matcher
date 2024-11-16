@@ -2,11 +2,8 @@ use crate::config::Config;
 use crate::database::VectorDB;
 
 use crate::preprocessing::preprocess_query;
-//use crate::process_search_results;
 use std::sync::Arc;
-use tonic::transport::Server;
 use tonic::{Request, Response, Status};
-use tonic_reflection::server::Builder as ReflectionBuilder;
 use tracing::{debug, error, info, warn};
 
 pub mod matcher {
@@ -15,8 +12,8 @@ pub mod matcher {
 
 pub struct MatcherService {
     #[allow(dead_code)]
-    config: Arc<Config>,
-    db: Arc<VectorDB>,
+    pub config: Arc<Config>,
+    pub db: Arc<VectorDB>,
 }
 
 #[tonic::async_trait]
@@ -84,39 +81,4 @@ impl matcher::matcher_server::Matcher for MatcherService {
             has_matches,
         }))
     }
-}
-
-pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::]:50030".parse()?;
-    info!("Initializing VectorDB");
-
-    // Initialize VectorDB
-    let db = match VectorDB::new("data/mydb", Some((*config).clone()), false).await {
-        Ok(db) => Arc::new(db),
-        Err(e) => {
-            error!("Failed to initialize VectorDB: {}", e);
-            return Err(e.into());
-        }
-    };
-
-    let matcher_service = MatcherService { config, db };
-
-    // Get the file descriptor set
-    let descriptor_set = include_bytes!(concat!(env!("OUT_DIR"), "/matcher_descriptor.bin"));
-
-    // Build the reflection service
-    let reflection_service = ReflectionBuilder::configure()
-        .register_encoded_file_descriptor_set(descriptor_set)
-        .build_v1()?;
-
-    info!("Starting gRPC server on {}", addr);
-
-    Server::builder()
-        .add_service(matcher::matcher_server::MatcherServer::new(matcher_service))
-        .add_service(reflection_service)
-        .serve(addr)
-        .await?;
-
-    info!("gRPC server has been shut down");
-    Ok(())
 }
