@@ -5,11 +5,6 @@ use super::process_single_result::process_single_result;
 use crate::database::SearchResult;
 use crate::preprocessing::ProcessedQuery;
 
-pub struct SearchAttempt {
-    pub result: Option<SearchResult>,
-    pub similarity: f32, // Always include the similarity score
-}
-
 pub async fn process_search_batch(
     rb: RecordBatch,
     processed: &ProcessedQuery,

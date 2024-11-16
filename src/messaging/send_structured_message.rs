@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result as AnyhowResult};
 use chrono::Utc;
 use iggy::clients::client::IggyClient;
 use iggy::messages::send_messages::Message;
@@ -13,19 +13,18 @@ pub struct MessagePayload {
 }
 
 pub async fn send_structured_message(
-    client: &IggyClient,
-    tenant: &str,            // Will be used as stream name
-    topic: &str,             // Topic name
-    action: &str,            // Action to be performed
-    parameters: Vec<String>, // Parameters for the action
-) -> Result<()> {
+    client: &Box<IggyClient>,
+    tenant: &str,
+    topic: &str,
+    action: &str,
+    parameters: Vec<String>,
+) -> AnyhowResult<()> {
     // Create the message payload
     let payload = MessagePayload {
         timestamp: Utc::now().to_rfc3339(),
         action: action.to_string(),
         parameters,
     };
-
     let json_payload = serde_json::to_string(&payload)?;
 
     // Create and initialize producer

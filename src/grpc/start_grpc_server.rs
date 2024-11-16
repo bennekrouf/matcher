@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::database::VectorDB;
 
-use super::grpc_server::matcher::matcher_server::MatcherServer;
-use super::grpc_server::MatcherService;
+use super::grpc_service::matcher::matcher_server::MatcherServer;
+use super::grpc_service::MatcherService;
 
 use std::sync::Arc;
 use tonic::transport::Server;

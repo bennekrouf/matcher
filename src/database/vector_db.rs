@@ -1,6 +1,7 @@
-use super::{db_initializer::initialize_table, search_operations::search_similar};
+use super::db_initializer::initialize_table;
 use crate::config::Config;
 use crate::database::SearchResult;
+use crate::search_operations::search_similar;
 use anyhow::Result as AnyhowResult;
 use lancedb::{connect, Connection, Table};
 

@@ -1,5 +1,4 @@
 mod db_initializer;
-mod search_operations;
 mod vector_db;
 
 pub use vector_db::VectorDB;

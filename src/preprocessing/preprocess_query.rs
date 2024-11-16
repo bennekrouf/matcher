@@ -64,44 +64,6 @@ fn clean_text(text: &str, patterns: &LanguagePatterns) -> String {
     cleaned.replace("  ", " ").trim().to_string()
 }
 
-fn preprocess_french(query: &str) -> String {
-    query
-        .to_lowercase()
-        .trim()
-        // Remove French articles
-        .replace(" le ", " ")
-        .replace(" la ", " ")
-        .replace(" les ", " ")
-        .replace(" l'", " ")
-        // Remove French polite phrases
-        .replace("s'il vous plaît ", "")
-        .replace("s'il vous plait ", "")
-        .replace("pourriez-vous ", "")
-        .replace("pouvez-vous ", "")
-        .replace("je voudrais ", "")
-        .replace("je souhaite ", "")
-        // Fix common contractions
-        .replace("d'", "de ")
-        // Clean up extra spaces
-        .replace("  ", " ")
-        .trim()
-        .to_string()
-}
-
-fn preprocess_english(query: &str) -> String {
-    query
-        .to_lowercase()
-        .trim()
-        .replace("please ", "")
-        .replace("could you ", "")
-        .replace("can you ", "")
-        .replace("would you ", "")
-        .replace(" the ", " ")
-        .replace("  ", " ")
-        .trim()
-        .to_string()
-}
-
 fn extract_email(text: &str) -> Option<String> {
     EMAIL_REGEX.find(text).map(|m| m.as_str().to_string())
 }
@@ -130,17 +92,6 @@ mod tests {
             );
         }
     }
-
-    // #[test]
-    // fn test_french_preprocessing() {
-    //     let processed = preprocess_query("Pourriez-vous lancer l'analyse de gpecs", "fr");
-    //     assert_eq!(processed.cleaned_text, "lancer analyse de gpecs");
-    //     assert_eq!(processed.app_name, Some("gpecs".to_string()));
-    //
-    //     let processed = preprocess_query("Je voudrais effectuer le calcul pour myapp", "fr");
-    //     assert_eq!(processed.cleaned_text, "effectuer calcul pour myapp");
-    //     assert_eq!(processed.app_name, Some("myapp".to_string()));
-    // }
 
     #[test]
     fn test_app_extraction() {

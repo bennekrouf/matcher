@@ -5,9 +5,10 @@ mod constants;
 mod database;
 mod filters;
 mod grpc;
+mod messaging;
 mod preprocessing;
 mod process_search_results;
-mod send_structured_message;
+mod search_operations;
 
 #[cfg(test)]
 mod tests;
