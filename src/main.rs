@@ -57,7 +57,7 @@ async fn main() -> AnyhowResult<()> {
         let db = VectorDB::new("data/mydb", Some(config.as_ref().clone()), args.reload).await?;
         if let Some(query) = args.query {
             println!("\nTesting vector search...");
-            let results = db.search_similar(&query, &args.language, 1).await?;
+            let (results, _similarity) = db.search_similar(&query, &args.language, 1).await?;
             process_search_results(results).await?;
         }
     }

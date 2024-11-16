@@ -14,6 +14,8 @@ message MatchRequest {
 
 message MatchResponse {
     repeated EndpointMatch matches = 1;
+    double score = 2;
+    bool has_matches = 3;
 }
 
 message EndpointMatch {

@@ -24,6 +24,7 @@ endpoints:
       - "envoie le document par mail à {email}"
       - "envoie le document à {email}"
       - "envoi le mail à {email}"
+      - "envoi le rapport à {email}"
       - "envoyer le document à {email}"
     description: "Envoyer un document par email"
     parameters:

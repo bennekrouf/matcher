@@ -51,7 +51,7 @@ impl VectorDB {
         query: &str,
         language: &str,
         limit: usize,
-    ) -> AnyhowResult<Vec<SearchResult>> {
+    ) -> AnyhowResult<(Vec<SearchResult>, f32)> {
         search_similar(&self.patterns_table, query, language, limit).await
     }
 }

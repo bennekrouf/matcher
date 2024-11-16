@@ -2,7 +2,7 @@ use anyhow::{Context, Result as AnyhowResult};
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{DistanceType, Table};
 
-use super::process_results::process_search_batch;
+use super::process_search_batch::process_search_batch;
 use crate::database::SearchResult;
 use crate::embeddings::get_embeddings;
 use crate::preprocessing::preprocess_query;
@@ -13,13 +13,10 @@ pub async fn search_similar(
     query: &str,
     language: &str,
     limit: usize,
-) -> AnyhowResult<Vec<SearchResult>> {
+) -> AnyhowResult<(Vec<SearchResult>, f32)> {
+    // Return both results and best score
     let processed = preprocess_query(query, language);
     println!("\nProcessed query: '{}'", processed.cleaned_text);
-
-    for (param_name, param_value) in &processed.parameters {
-        println!("!!! Detected {}: {}", param_name, param_value);
-    }
 
     let query_embedding = get_embeddings(&processed.cleaned_text).await?;
     println!("Generated query embedding, starting vector search...");
@@ -32,14 +29,15 @@ pub async fn search_similar(
         .execute()
         .await?;
 
-    println!("Vector search completed, processing results...");
     let mut matches = Vec::new();
+    let mut best_similarity: f32 = 0.0;
 
     while let Some(Ok(rb)) = results.next().await {
-        matches.extend(process_search_batch(rb, &processed).await?);
+        let (new_matches, similarity) = process_search_batch(rb, &processed).await?;
+        best_similarity = best_similarity.max(similarity);
+        matches.extend(new_matches);
     }
 
-    println!("Final matches count: {}", matches.len());
     matches.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-    Ok(matches)
+    Ok((matches, best_similarity))
 }

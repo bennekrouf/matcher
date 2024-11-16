@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::database::VectorDB;
-use crate::process_search_results;
+//use crate::process_search_results;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -29,7 +29,7 @@ impl matcher::matcher_server::Matcher for MatcherService {
             req.query, req.language, req.show_all_matches
         );
 
-        let results = match self
+        let (results, best_similarity) = match self
             .db
             .search_similar(
                 &req.query,
@@ -38,21 +38,11 @@ impl matcher::matcher_server::Matcher for MatcherService {
             )
             .await
         {
-            Ok(results) => {
+            Ok((results, similarity)) => {
                 if results.is_empty() {
                     warn!("No matches found for query: {}", req.query);
-                } else {
-                    debug!("Found {} matches", results.len());
-                    for (i, result) in results.iter().enumerate() {
-                        debug!(
-                            "Match {}: id={}, similarity={:.4}",
-                            i + 1,
-                            result.endpoint_id,
-                            result.similarity
-                        );
-                    }
                 }
-                results
+                (results, similarity)
             }
             Err(e) => {
                 error!("Search failed: {}", e);
@@ -65,7 +55,7 @@ impl matcher::matcher_server::Matcher for MatcherService {
             .map(|result| {
                 let match_data = matcher::EndpointMatch {
                     endpoint_id: result.endpoint_id.clone(),
-                    similarity: result.similarity as f64,
+                    similarity: (1.0 - result.similarity) as f64, // Convert distance to similarity
                     parameters: result.parameters.clone(),
                 };
                 debug!(
@@ -76,16 +66,18 @@ impl matcher::matcher_server::Matcher for MatcherService {
             })
             .collect();
 
-        // Process only the best match through Iggy if available
-        if let Some(best_result) = results.first() {
-            info!("Processing best match through Iggy");
-            if let Err(e) = process_search_results(vec![best_result.clone()]).await {
-                error!("Failed to process best result through Iggy: {}", e);
-            }
-        }
-
-        info!("Returning response with {} matches", matches.len());
-        Ok(Response::new(matcher::MatchResponse { matches }))
+        info!(
+            "Returning response with {} matches, best similarity: {}",
+            matches.len(),
+            best_similarity
+        );
+        let has_matches = !matches.is_empty();
+        let score = best_similarity as f64;
+        Ok(Response::new(matcher::MatchResponse {
+            matches,
+            score,
+            has_matches,
+        }))
     }
 }
 
