@@ -1,4 +1,4 @@
-use crate::extract_app_name::extract_app_name;
+use crate::filters::extract_app_name::extract_app_name;
 use anyhow::Result as AnyhowResult;
 use lazy_static::lazy_static;
 use regex::Regex;

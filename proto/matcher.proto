@@ -22,4 +22,5 @@ message EndpointMatch {
     string endpoint_id = 1;
     double similarity = 2;
     map<string, string> parameters = 3;
+    bool is_negated = 4;
 }

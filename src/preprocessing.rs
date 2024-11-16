@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use lazy_static::lazy_static;
 use regex::Regex;
+use crate::language_patterns::LANGUAGE_PATTERNS;
 
 #[derive(Debug)]
 pub struct ProcessedQuery {
     pub cleaned_text: String,
     pub parameters: HashMap<String, String>,
+    pub is_negated: bool,
 }
 
 lazy_static! {
@@ -22,19 +24,17 @@ lazy_static! {
 }
 
 pub fn preprocess_query(query: &str, language: &str) -> ProcessedQuery {
-    let cleaned_text = match language {
-        "fr" => preprocess_french(query),
-        _ => preprocess_english(query),
-    };
+    let patterns = LANGUAGE_PATTERNS.get(language).unwrap_or_else(|| {
+        LANGUAGE_PATTERNS.get("en").unwrap()  // fallback to English
+    });
+
+    let is_negated = count_negations(query, &patterns.negations) % 2 != 0;
+    let cleaned_text = clean_text(query, patterns);
 
     let mut parameters = HashMap::new();
-
-    // Extract email if present
     if let Some(email) = extract_email(&cleaned_text) {
         parameters.insert("email".to_string(), email);
     }
-
-    // Extract app if present
     if let Some(app) = extract_app_name(&cleaned_text) {
         parameters.insert("app".to_string(), app);
     }
@@ -42,7 +42,48 @@ pub fn preprocess_query(query: &str, language: &str) -> ProcessedQuery {
     ProcessedQuery {
         cleaned_text,
         parameters,
+        is_negated,
     }
+}
+
+use crate::language_patterns::NegationPattern;
+use crate::language_patterns::LanguagePatterns;
+
+fn count_negations(query: &str, patterns: &[NegationPattern]) -> i32 {
+    let query = query.to_lowercase();
+    let mut total_negations = 0;
+
+    // Sort patterns by length (longest first) to catch complete phrases first
+    let mut sorted_patterns = patterns.to_vec();
+    sorted_patterns.sort_by(|a, b| b.pattern.len().cmp(&a.pattern.len()));
+
+    for pattern in sorted_patterns {
+        if query.contains(pattern.pattern) {
+            total_negations += pattern.count;
+        }
+    }
+
+    total_negations
+}
+
+fn clean_text(text: &str, patterns: &LanguagePatterns) -> String {
+    let mut cleaned = text.to_lowercase();
+    
+    // Remove articles
+    for article in &patterns.articles {
+        cleaned = cleaned.replace(article, " ");
+    }
+
+    // Remove polite phrases
+    for phrase in &patterns.polite_phrases {
+        cleaned = cleaned.replace(phrase, "");
+    }
+
+    // Clean up extra spaces
+    cleaned
+        .replace("  ", " ")
+        .trim()
+        .to_string()
 }
 
 fn preprocess_french(query: &str) -> String {
@@ -121,6 +162,30 @@ fn extract_email(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+ #[test]
+    fn test_negation_detection() {
+        let test_cases = vec![
+            ("envoyer un mail", "fr", false),
+            ("ne pas envoyer de mail", "fr", true),
+            ("ne pas ne pas envoyer de mail", "fr", false),
+            ("send email", "en", false),
+            ("do not send email", "en", true),
+            ("don't not send email", "en", false),
+        ];
+
+        for (input, lang, should_be_negated) in test_cases {
+            let processed = preprocess_query(input, lang);
+            assert_eq!(
+                processed.is_negated, 
+                should_be_negated,
+                "Failed for '{}' ({}): expected negated={}", 
+                input, 
+                lang,
+                should_be_negated
+            );
+        }
+    }
 
     // #[test]
     // fn test_french_preprocessing() {

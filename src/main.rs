@@ -1,12 +1,9 @@
 use anyhow::Result as AnyhowResult;
 use lazy_static::lazy_static;
 use matcher::{
-    load_model, process_search_results, start_grpc_server, Config, VectorDB, MODEL_PATH,
+    load_model, parse_args, process_search_results, start_grpc_server, Config, VectorDB, MODEL_PATH,
 };
 use std::sync::Arc;
-
-mod cli;
-use cli::parse_args;
 
 const CONFIG_PATH: &str = "endpoints.yaml";
 

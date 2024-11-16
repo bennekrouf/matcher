@@ -1,6 +1,7 @@
 use anyhow::Result as AnyhowResult;
 
-use crate::database::{parameter_extractor::extract_parameters, SearchResult};
+use crate::database::SearchResult;
+use crate::filters::extract_parameters::extract_parameters;
 use crate::preprocessing::ProcessedQuery;
 
 pub struct SearchAttempt {

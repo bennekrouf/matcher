@@ -1,5 +1,4 @@
 mod db_initializer;
-mod parameter_extractor;
 mod search_operations;
 mod vector_db;
 

@@ -27,20 +27,18 @@ mod tests {
         ];
 
         for (query, expected_match, min_similarity) in test_cases {
-            let results = db.search_similar(query, "en", 1).await?;
-
+            let (results, _similarity) = db.search_similar(query, "en", 1).await?; // Destructure here
             assert!(!results.is_empty(), "No results found for query: {}", query);
-
             let best_match = &results[0];
             assert!(
-                best_match.similarity >= min_similarity,
-                "Low confidence match for '{}'. Expected '{}' with similarity >= {}, got '{}' with {}",
-                query,
-                expected_match,
-                min_similarity,
-                best_match.text,
-                best_match.similarity
-            );
+            best_match.similarity >= min_similarity,
+            "Low confidence match for '{}'. Expected '{}' with similarity >= {}, got '{}' with {}",
+            query,
+            expected_match,
+            min_similarity,
+            best_match.pattern,
+            best_match.similarity
+        );
         }
 
         Ok(())
@@ -49,23 +47,19 @@ mod tests {
     #[tokio::test]
     async fn test_similar_endpoints() -> AnyhowResult<()> {
         let db = setup().await?;
-
-        // Test that similar queries return multiple relevant results
-        let results = db.search_similar("Run computation", "fr", 2).await?;
-
+        let (results, _similarity) = db.search_similar("Run computation", "fr", 2).await?; // Destructure here
         assert!(results.len() >= 2, "Expected at least 2 results");
-
         // Both "run analysis" and "perform calculation" should be relatively good matches
         assert!(
             results
                 .iter()
-                .any(|r| r.text == "run analysis" && r.similarity > 0.6),
+                .any(|r| r.pattern == "run analysis" && r.similarity > 0.6),
             "Expected 'run analysis' to be a decent match"
         );
         assert!(
             results
                 .iter()
-                .any(|r| r.text == "perform calculation" && r.similarity > 0.6),
+                .any(|r| r.pattern == "perform calculation" && r.similarity > 0.6),
             "Expected 'perform calculation' to be a decent match"
         );
 

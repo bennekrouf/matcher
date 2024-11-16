@@ -1,5 +1,7 @@
 use crate::config::Config;
 use crate::database::VectorDB;
+
+use crate::preprocessing::preprocess_query;
 //use crate::process_search_results;
 use std::sync::Arc;
 use tonic::transport::Server;
@@ -24,6 +26,8 @@ impl matcher::matcher_server::Matcher for MatcherService {
         request: Request<matcher::MatchRequest>,
     ) -> Result<Response<matcher::MatchResponse>, Status> {
         let req = request.into_inner();
+        let processed = preprocess_query(&req.query, &req.language);
+
         info!(
             "Received match request - query: {}, language: {}, show_all_matches: {}",
             req.query, req.language, req.show_all_matches
@@ -32,7 +36,7 @@ impl matcher::matcher_server::Matcher for MatcherService {
         let (results, best_similarity) = match self
             .db
             .search_similar(
-                &req.query,
+                &processed.cleaned_text,
                 &req.language,
                 if req.show_all_matches { 5 } else { 1 },
             )
@@ -57,6 +61,7 @@ impl matcher::matcher_server::Matcher for MatcherService {
                     endpoint_id: result.endpoint_id.clone(),
                     similarity: (1.0 - result.similarity) as f64, // Convert distance to similarity
                     parameters: result.parameters.clone(),
+                    is_negated: processed.is_negated,
                 };
                 debug!(
                     "Created match response: id={}, similarity={:.4}",
