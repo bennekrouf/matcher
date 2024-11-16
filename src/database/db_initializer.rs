@@ -1,5 +1,5 @@
+use crate::candle::get_embeddings::get_embeddings;
 use crate::config::Endpoint;
-use crate::embeddings::get_embeddings;
 use anyhow::Result as AnyhowResult;
 use arrow_array::types::Float32Type;
 use arrow_array::{FixedSizeListArray, RecordBatch, StringArray};

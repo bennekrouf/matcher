@@ -1,31 +1,12 @@
+use super::language_patterns::LANGUAGE_PATTERNS;
+use super::ProcessedQuery;
+use super::EMAIL_REGEX;
+use crate::filters::extract_app_name::extract_app_name;
 use std::collections::HashMap;
-use lazy_static::lazy_static;
-use regex::Regex;
-use crate::language_patterns::LANGUAGE_PATTERNS;
-
-#[derive(Debug)]
-pub struct ProcessedQuery {
-    pub cleaned_text: String,
-    pub parameters: HashMap<String, String>,
-    pub is_negated: bool,
-}
-
-lazy_static! {
-    static ref EMAIL_REGEX: Regex = Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
-    // Pattern for finding app names in French sentences
-    static ref APP_PATTERNS: Vec<(&'static str, &'static str)> = vec![
-        ("de ", ""), // "analyse de gpecs"
-        ("du ", ""), // "analyse du gpecs"
-        ("pour ", ""), // "analyse pour gpecs"
-        ("sur ", ""), // "analyse sur gpecs"
-        (" de l'application ", ""), // "analyse de l'application gpecs"
-        (" de l'app ", ""), // "analyse de l'app gpecs"
-    ];
-}
 
 pub fn preprocess_query(query: &str, language: &str) -> ProcessedQuery {
     let patterns = LANGUAGE_PATTERNS.get(language).unwrap_or_else(|| {
-        LANGUAGE_PATTERNS.get("en").unwrap()  // fallback to English
+        LANGUAGE_PATTERNS.get("en").unwrap() // fallback to English
     });
 
     let is_negated = count_negations(query, &patterns.negations) % 2 != 0;
@@ -46,8 +27,8 @@ pub fn preprocess_query(query: &str, language: &str) -> ProcessedQuery {
     }
 }
 
-use crate::language_patterns::NegationPattern;
-use crate::language_patterns::LanguagePatterns;
+use super::language_patterns::LanguagePatterns;
+use super::language_patterns::NegationPattern;
 
 fn count_negations(query: &str, patterns: &[NegationPattern]) -> i32 {
     let query = query.to_lowercase();
@@ -68,7 +49,7 @@ fn count_negations(query: &str, patterns: &[NegationPattern]) -> i32 {
 
 fn clean_text(text: &str, patterns: &LanguagePatterns) -> String {
     let mut cleaned = text.to_lowercase();
-    
+
     // Remove articles
     for article in &patterns.articles {
         cleaned = cleaned.replace(article, " ");
@@ -80,10 +61,7 @@ fn clean_text(text: &str, patterns: &LanguagePatterns) -> String {
     }
 
     // Clean up extra spaces
-    cleaned
-        .replace("  ", " ")
-        .trim()
-        .to_string()
+    cleaned.replace("  ", " ").trim().to_string()
 }
 
 fn preprocess_french(query: &str) -> String {
@@ -124,46 +102,15 @@ fn preprocess_english(query: &str) -> String {
         .to_string()
 }
 
-fn extract_app_name(text: &str) -> Option<String> {
-    let text = text.to_lowercase();
-
-    for (prefix, suffix) in APP_PATTERNS.iter() {
-        if let Some(start_pos) = text.find(prefix) {
-            let start = start_pos + prefix.len();
-            let remaining = &text[start..];
-
-            // If there's a suffix, look for it
-            let end_pos = if suffix.is_empty() {
-                remaining.len()
-            } else {
-                remaining.find(suffix).unwrap_or(remaining.len())
-            };
-
-            let potential_app = remaining[..end_pos].trim();
-
-            // Basic validation of app name
-            if !potential_app.is_empty() 
-                && potential_app.len() >= 2  // Minimum length
-                && !potential_app.contains('@')  // Not an email
-                && !potential_app.contains(' ')  // Single word
-            {
-                return Some(potential_app.to_string());
-            }
-        }
-    }
-    None
-}
-
 fn extract_email(text: &str) -> Option<String> {
-    EMAIL_REGEX.find(text)
-        .map(|m| m.as_str().to_string())
+    EMAIL_REGEX.find(text).map(|m| m.as_str().to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
- #[test]
+    #[test]
     fn test_negation_detection() {
         let test_cases = vec![
             ("envoyer un mail", "fr", false),
@@ -177,12 +124,9 @@ mod tests {
         for (input, lang, should_be_negated) in test_cases {
             let processed = preprocess_query(input, lang);
             assert_eq!(
-                processed.is_negated, 
-                should_be_negated,
-                "Failed for '{}' ({}): expected negated={}", 
-                input, 
-                lang,
-                should_be_negated
+                processed.is_negated, should_be_negated,
+                "Failed for '{}' ({}): expected negated={}",
+                input, lang, should_be_negated
             );
         }
     }
@@ -235,11 +179,11 @@ mod tests {
         let test_cases = vec![
             (
                 "Envoie le document par mail à toto@gmail.com",
-                "envoie document par mail à toto@gmail.com"
+                "envoie document par mail à toto@gmail.com",
             ),
             (
                 "Pourriez-vous envoyer un mail à user@example.com",
-                "envoyer mail à user@example.com"
+                "envoyer mail à user@example.com",
             ),
         ];
 

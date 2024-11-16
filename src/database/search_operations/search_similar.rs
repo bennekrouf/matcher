@@ -3,9 +3,9 @@ use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{DistanceType, Table};
 
 use super::process_search_batch::process_search_batch;
+use crate::candle::get_embeddings::get_embeddings;
 use crate::database::SearchResult;
-use crate::embeddings::get_embeddings;
-use crate::preprocessing::preprocess_query;
+use crate::preprocessing::preprocess_query::preprocess_query;
 use futures::StreamExt;
 
 pub async fn search_similar(

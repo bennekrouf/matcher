@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::database::VectorDB;
 
-use crate::preprocessing::preprocess_query;
+use crate::preprocessing::preprocess_query::preprocess_query;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{debug, error, info, warn};

@@ -1,18 +1,9 @@
 use anyhow::Result as AnyhowResult;
-use lazy_static::lazy_static;
 use matcher::{
-    load_model, parse_args, process_search_results, start_grpc_server, Config, VectorDB, MODEL_PATH,
+    parse_args, process_search_results, start_grpc_server, Config, VectorDB, CONFIG_PATH,
+    MODEL_PATH,
 };
 use std::sync::Arc;
-
-const CONFIG_PATH: &str = "endpoints.yaml";
-
-lazy_static! {
-    pub(crate) static ref AI: (
-        candle_transformers::models::bert::BertModel,
-        tokenizers::Tokenizer
-    ) = load_model().expect("Unable to load model");
-}
 
 #[tokio::main]
 async fn main() -> AnyhowResult<()> {
