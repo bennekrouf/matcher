@@ -2,7 +2,7 @@
 mod tests {
     // use super::*;
     use crate::config::Config;
-    use crate::db::VectorDB;
+    use crate::database::VectorDB;
     use anyhow::Result as AnyhowResult;
     // use pretty_assertions::assert_eq;
 
@@ -20,7 +20,7 @@ mod tests {
 
         let test_cases = vec![
             ("Run an analysis", "run analysis", 0.8),
-            ("Please run the analysis", "run analysis", 0.8),  // Should now score higher
+            ("Please run the analysis", "run analysis", 0.8), // Should now score higher
             ("Could you run the analysis", "run analysis", 0.8),
             ("Perform a calculation", "perform calculation", 0.8),
             ("Can you do a calculation", "perform calculation", 0.7),
@@ -57,11 +57,15 @@ mod tests {
 
         // Both "run analysis" and "perform calculation" should be relatively good matches
         assert!(
-            results.iter().any(|r| r.text == "run analysis" && r.similarity > 0.6),
+            results
+                .iter()
+                .any(|r| r.text == "run analysis" && r.similarity > 0.6),
             "Expected 'run analysis' to be a decent match"
         );
         assert!(
-            results.iter().any(|r| r.text == "perform calculation" && r.similarity > 0.6),
+            results
+                .iter()
+                .any(|r| r.text == "perform calculation" && r.similarity > 0.6),
             "Expected 'perform calculation' to be a decent match"
         );
 
