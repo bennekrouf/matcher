@@ -24,13 +24,6 @@ pub struct Config {
     pub endpoints: Vec<Endpoint>,
 }
 
-// impl Config {
-//     pub fn load_from_yaml<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-//         let f = std::fs::File::open(path)?;
-//         Ok(serde_yaml::from_reader(f)?)
-//     }
-// }
-
 impl Endpoint {
     // Helper method to validate patterns
     pub fn validate(&self) -> Result<(), String> {
@@ -51,19 +44,8 @@ impl Endpoint {
                 }
             }
         }
-
         Ok(())
     }
-
-    // Helper to check if a pattern requires a specific parameter
-    // pub fn has_parameter(&self, name: &str) -> bool {
-    //     self.parameters.iter().any(|p| p.name == name)
-    // }
-
-    // Helper to get parameter details
-    // pub fn get_parameter(&self, name: &str) -> Option<&Parameter> {
-    //     self.parameters.iter().find(|p| p.name == name)
-    // }
 }
 
 impl Config {

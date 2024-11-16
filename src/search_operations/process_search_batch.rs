@@ -2,12 +2,14 @@ use anyhow::Result as AnyhowResult;
 use arrow_array::{Array, Float32Array, RecordBatch, StringArray};
 
 use super::process_single_result::process_single_result;
+use crate::config::Config;
 use crate::database::SearchResult;
 use crate::preprocessing::ProcessedQuery;
 
 pub async fn process_search_batch(
     rb: RecordBatch,
     processed: &ProcessedQuery,
+    config: &Config,
 ) -> AnyhowResult<(Vec<SearchResult>, f32)> {
     println!("Processing record batch...");
 
@@ -48,6 +50,7 @@ pub async fn process_search_batch(
             endpoint_id_column.value(i),
             similarity,
             processed,
+            config,
         )
         .await?;
 

@@ -5,8 +5,15 @@ use matcher::{
 };
 use std::sync::Arc;
 
+use tracing::Level;
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, FmtSubscriber, Registry};
 #[tokio::main]
 async fn main() -> AnyhowResult<()> {
+    // Initialize tracing
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::DEBUG)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     let args = parse_args();
     println!("Loading model from: {}", MODEL_PATH);
     let config = Arc::new(Config::load_from_yaml(CONFIG_PATH)?);
@@ -20,7 +27,9 @@ async fn main() -> AnyhowResult<()> {
         let db = VectorDB::new("data/mydb", Some(config.as_ref().clone()), args.reload).await?;
         if let Some(query) = args.query {
             println!("\nTesting vector search...");
-            let (results, _similarity) = db.search_similar(&query, &args.language, 1).await?;
+            let (results, _similarity) = db
+                .search_similar(&query, &args.language, 1, &config)
+                .await?;
             process_search_results(results).await?;
         }
     }

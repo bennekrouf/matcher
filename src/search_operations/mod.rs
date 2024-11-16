@@ -1,3 +1,4 @@
+pub mod parameter_analysis;
 mod process_search_batch;
 mod process_single_result;
 mod search_similar;

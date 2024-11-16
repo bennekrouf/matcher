@@ -1,10 +1,11 @@
-use crate::config::Config;
+use crate::config::{Config, Parameter};
 use crate::database::VectorDB;
 
 use crate::preprocessing::preprocess_query::preprocess_query;
+use matcher::EndpointMatch;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 pub mod matcher {
     tonic::include_proto!("matcher");
@@ -36,6 +37,7 @@ impl matcher::matcher_server::Matcher for MatcherService {
                 &processed.cleaned_text,
                 &req.language,
                 if req.show_all_matches { 5 } else { 1 },
+                &self.config,
             )
             .await
         {
@@ -54,17 +56,41 @@ impl matcher::matcher_server::Matcher for MatcherService {
         let matches: Vec<matcher::EndpointMatch> = results
             .iter()
             .map(|result| {
-                let match_data = matcher::EndpointMatch {
+                // Find corresponding endpoint configuration
+                let endpoint = self
+                    .config
+                    .endpoints
+                    .iter()
+                    .find(|e| e.id == result.endpoint_id)
+                    .expect("Endpoint not found in config");
+
+                // Analyze parameters
+                let param_analysis = endpoint.analyze_parameters(&result.parameters);
+
+                EndpointMatch {
                     endpoint_id: result.endpoint_id.clone(),
-                    similarity: (1.0 - result.similarity) as f64, // Convert distance to similarity
+                    similarity: (1.0 - result.similarity) as f64,
                     parameters: result.parameters.clone(),
                     is_negated: processed.is_negated,
-                };
-                debug!(
-                    "Created match response: id={}, similarity={:.4}",
-                    match_data.endpoint_id, match_data.similarity
-                );
-                match_data
+                    missing_required: param_analysis
+                        .missing_required
+                        .iter()
+                        .map(|p| matcher::ParameterInfo {
+                            name: p.name.clone(),
+                            description: p.description.clone(),
+                            required: true,
+                        })
+                        .collect(),
+                    missing_optional: param_analysis
+                        .missing_optional
+                        .iter()
+                        .map(|p| matcher::ParameterInfo {
+                            name: p.name.clone(),
+                            description: p.description.clone(),
+                            required: false,
+                        })
+                        .collect(),
+                }
             })
             .collect();
 

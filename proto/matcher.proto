@@ -18,9 +18,17 @@ message MatchResponse {
     bool has_matches = 3;
 }
 
+message ParameterInfo {
+    string name = 1;
+    string description = 2;
+    bool required = 3;
+}
+
 message EndpointMatch {
     string endpoint_id = 1;
     double similarity = 2;
     map<string, string> parameters = 3;
     bool is_negated = 4;
+    repeated ParameterInfo missing_required = 5;
+    repeated ParameterInfo missing_optional = 6;
 }

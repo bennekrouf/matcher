@@ -1,8 +1,9 @@
-use anyhow::Result as AnyhowResult;
-
+use crate::config::Config;
 use crate::database::SearchResult;
 use crate::filters::extract_parameters::extract_parameters;
 use crate::preprocessing::ProcessedQuery;
+use anyhow::Result as AnyhowResult;
+use tracing::{debug, info};
 
 pub struct SearchAttempt {
     pub result: Option<SearchResult>,
@@ -15,49 +16,47 @@ pub async fn process_single_result(
     endpoint_id: &str,
     distance: f32,
     processed: &ProcessedQuery,
+    config: &Config,
 ) -> AnyhowResult<SearchAttempt> {
     let similarity = 1.0 - distance;
-
-    println!(
+    info!(
         "Processing result {}: pattern='{}', endpoint='{}', similarity={}",
         index, pattern, endpoint_id, similarity
     );
 
+    let endpoint = config
+        .endpoints
+        .iter()
+        .find(|e| e.id == endpoint_id)
+        .ok_or_else(|| anyhow::anyhow!("Endpoint not found: {}", endpoint_id))?;
+
     let mut parameters = processed.parameters.clone();
+    debug!("Provided parameters: {:?}", parameters);
 
     if !parameters.is_empty() {
         let pattern_params = extract_parameters(&processed.cleaned_text, pattern)?;
+        debug!("Extracted parameters from pattern: {:?}", pattern_params);
         for (key, value) in pattern_params {
             if !parameters.contains_key(&key) {
-                println!("Adding pattern param: {}={}", key, value);
+                debug!("Adding pattern param: {}={}", key, value);
                 parameters.insert(key, value);
             }
         }
     } else {
         parameters = extract_parameters(&processed.cleaned_text, pattern)?;
-        println!("Extracted parameters from pattern: {:?}", parameters);
+        debug!("Extracted parameters from pattern: {:?}", parameters);
     }
 
-    let has_required_params = match pattern {
-        p if p.contains("{app}") => parameters.contains_key("app"),
-        p if p.contains("{email}") => parameters.contains_key("email"),
-        _ => true,
-    };
+    let parameter_analysis = endpoint.analyze_parameters(&parameters);
+    debug!("Parameter analysis: {:?}", parameter_analysis);
 
-    println!("Has required params: {}", has_required_params);
-
-    let result = if has_required_params {
-        println!("Adding match to results");
-        Some(SearchResult {
-            endpoint_id: endpoint_id.to_string(),
-            pattern: pattern.to_string(),
-            similarity,
-            parameters,
-        })
-    } else {
-        println!("Skipping result due to missing required parameters");
-        None
-    };
+    let result = Some(SearchResult {
+        endpoint_id: endpoint_id.to_string(),
+        pattern: pattern.to_string(),
+        similarity,
+        parameters,
+        parameter_analysis: Some(parameter_analysis),
+    });
 
     Ok(SearchAttempt { result, similarity })
 }
