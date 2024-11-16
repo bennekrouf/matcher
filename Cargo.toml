@@ -38,5 +38,9 @@ prost = "0.13.3"
 name = "matcher"
 path = "src/main.rs"
 
+[lib]
+name = "matcher"
+path = "src/lib.rs"
+
 [build-dependencies]
 tonic-build = "0.12.3"

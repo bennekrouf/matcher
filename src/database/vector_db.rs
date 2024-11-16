@@ -1,41 +1,22 @@
+// src/database/vector_db.rs
 use anyhow::{Context, Result as AnyhowResult};
-use arrow::record_batch::RecordBatchIterator;
-use arrow_array::types::Float32Type;
-use arrow_array::Array;
-use arrow_array::{FixedSizeListArray, Float32Array, RecordBatch, StringArray};
-use arrow_schema::{DataType, Field, Schema};
+use arrow_array::{Array, Float32Array, StringArray};
 use futures::StreamExt;
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{connect, Connection, DistanceType, Table};
-use lazy_static::lazy_static;
-use regex::Regex;
-use std::{collections::HashMap, sync::Arc};
 
 use crate::config::Config;
-use crate::config::Endpoint;
 use crate::embeddings::get_embeddings;
-use crate::extract_app_name::extract_app_name;
 use crate::preprocessing::preprocess_query;
 
-const VECTOR_SIZE: i32 = 384;
+use super::db_initializer::initialize_table;
+use super::parameter_extractor::extract_parameters;
+use super::search_result::SearchResult;
 
-lazy_static! {
-    static ref EMAIL_REGEX: Regex =
-        Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
-}
 pub struct VectorDB {
     #[allow(dead_code)]
     connection: Connection,
-    // endpoints_table: Table,
     patterns_table: Table,
-}
-
-#[derive(Debug, Clone)]
-pub struct SearchResult {
-    pub endpoint_id: String,
-    pub pattern: String,
-    pub similarity: f32,
-    pub parameters: HashMap<String, String>,
 }
 
 impl VectorDB {
@@ -46,25 +27,21 @@ impl VectorDB {
             if let Some(ref config) = config {
                 println!("Initializing database with endpoints from config...");
 
-                // Try to drop if exists, but don't fail if it doesn't
                 match connection.drop_table("patterns").await {
                     Ok(_) => println!("Dropped existing patterns table."),
                     Err(e) => println!("Note: Couldn't drop table (might not exist): {}", e),
                 }
 
-                // connection.ensure_table_dropped("patterns").await?;
-                Self::initialize_table(&connection, &config.endpoints).await?;
+                initialize_table(&connection, &config.endpoints).await?;
             }
         }
 
-        // Try to open the table
         let patterns_table = match connection.open_table("patterns").execute().await {
             Ok(table) => table,
             Err(e) => {
-                // If table doesn't exist and we have config, create it
                 if e.to_string().contains("Table not found") && config.is_some() {
                     println!("Table not found, creating new one...");
-                    Self::initialize_table(&connection, &config.unwrap().endpoints).await?;
+                    initialize_table(&connection, &config.unwrap().endpoints).await?;
                     connection.open_table("patterns").execute().await?
                 } else {
                     return Err(e.into());
@@ -184,24 +161,4 @@ impl VectorDB {
         matches.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
         Ok(matches)
     }
-}
-
-fn extract_parameters(query: &str, pattern: &str) -> AnyhowResult<HashMap<String, String>> {
-    let mut params = HashMap::new();
-
-    // Check for email parameter
-    if pattern.contains("{email}") {
-        if let Some(email) = EMAIL_REGEX.find(query) {
-            params.insert("email".to_string(), email.as_str().to_string());
-        }
-    }
-
-    // Check for app parameter
-    if pattern.contains("{app}") {
-        if let Some(app) = extract_app_name(query) {
-            params.insert("app".to_string(), app);
-        }
-    }
-
-    Ok(params)
 }

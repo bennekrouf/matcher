@@ -1,4 +1,4 @@
-use crate::db::SearchResult;
+use crate::database::SearchResult;
 use crate::model::load_model;
 use crate::send_structured_message::send_structured_message;
 //use anyhow::Result as AnyhowResult;

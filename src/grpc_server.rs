@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::db::VectorDB;
+use crate::database::VectorDB;
 use crate::process_search_results;
 use std::sync::Arc;
 use tonic::transport::Server;
@@ -12,6 +12,7 @@ pub mod matcher {
 }
 
 pub struct MatcherService {
+    #[allow(dead_code)]
     config: Arc<Config>,
     db: Arc<VectorDB>,
 }
