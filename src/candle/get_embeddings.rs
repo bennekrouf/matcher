@@ -1,7 +1,7 @@
 use anyhow::{Context, Result as AnyhowResult};
 use candle_core::{Device, Tensor};
 
-use crate::process_search_results::AI;
+use crate::candle::AI;
 
 pub async fn get_embeddings(sentence: &str) -> AnyhowResult<Vec<f32>> {
     let (model, tokenizer) = &*AI;

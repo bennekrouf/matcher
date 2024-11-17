@@ -1,8 +1,8 @@
 use crate::config::Config;
-use crate::database::VectorDB;
+use crate::database::vector_db::VectorDB;
 
-use super::grpc_service::matcher::matcher_server::MatcherServer;
-use super::grpc_service::MatcherService;
+use super::matcher_service::matcher::matcher_server::MatcherServer;
+use super::matcher_service::MatcherService;
 
 use std::sync::Arc;
 use tonic::transport::Server;
@@ -11,13 +11,13 @@ use tracing::{error, info};
 
 pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::]:50030".parse()?;
-    info!("Initializing VectorDB");
+    info!("Connecting to VectorDB");
 
-    // Initialize VectorDB
-    let db = match VectorDB::new("data/mydb", Some((*config).clone()), false).await {
+    // Simply connect to existing database without initialization
+    let db = match VectorDB::new("data/mydb", None, false).await {
         Ok(db) => Arc::new(db),
         Err(e) => {
-            error!("Failed to initialize VectorDB: {}", e);
+            error!("Failed to connect to VectorDB: {}. Make sure to initialize the database first using --reload flag", e);
             return Err(e.into());
         }
     };
@@ -33,7 +33,6 @@ pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::e
         .build_v1()?;
 
     info!("Starting gRPC server on {}", addr);
-
     Server::builder()
         .add_service(MatcherServer::new(matcher_service))
         .add_service(reflection_service)

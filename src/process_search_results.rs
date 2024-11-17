@@ -1,41 +1,7 @@
-use crate::candle::load_model::load_model;
 use crate::database::SearchResult;
 use crate::messaging::get_authenticated_iggy_client::get_authenticated_iggy_client;
 use crate::messaging::send_structured_message::send_structured_message;
 use anyhow::{anyhow, Result as AnyhowResult};
-use clap::Parser;
-use lazy_static::lazy_static;
-
-#[derive(Parser)]
-#[command(
-    name = "matcher",
-    about = "Match natural language queries to endpoints",
-    long_about = "A tool for semantically matching natural language queries to API endpoints using embeddings",
-    version,
-    author = "Mohamed <mb@mayorana.ch>",
-    help_template = "{about}\n\nUSAGE:\n    {usage}\n\n{options}"
-)]
-struct Args {
-    #[arg(long, default_value = "false")]
-    reload: bool,
-    #[arg(short, long)]
-    query: Option<String>,
-    #[arg(long)]
-    debug: bool,
-    #[arg(long)]
-    all: bool,
-    #[arg(short, long, default_value = "fr")]
-    language: String,
-    #[arg(long)]
-    server: bool,
-}
-
-lazy_static! {
-    pub(crate) static ref AI: (
-        candle_transformers::models::bert::BertModel,
-        tokenizers::Tokenizer
-    ) = load_model().expect("Unable to load model");
-}
 
 pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
     // Only proceed with the best match (first result)

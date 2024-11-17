@@ -1,5 +1,5 @@
-use crate::config::{Config, Parameter};
-use crate::database::VectorDB;
+use crate::config::Config;
+use crate::database::vector_db::VectorDB;
 
 use crate::preprocessing::preprocess_query::preprocess_query;
 use matcher::EndpointMatch;

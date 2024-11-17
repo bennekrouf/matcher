@@ -21,6 +21,7 @@ pub struct Endpoint {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
+    #[serde(default)]
     pub endpoints: Vec<Endpoint>,
 }
 

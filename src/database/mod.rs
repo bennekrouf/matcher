@@ -1,7 +1,6 @@
-mod db_initializer;
-mod vector_db;
-
-pub use vector_db::VectorDB;
+pub mod initialization;
+pub mod schema;
+pub mod vector_db;
 
 use crate::search_operations::parameter_analysis::ParameterAnalysis;
 use std::collections::HashMap;

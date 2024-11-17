@@ -7,6 +7,7 @@ use tracing::{debug, info};
 
 pub struct SearchAttempt {
     pub result: Option<SearchResult>,
+    #[allow(dead_code)]
     pub similarity: f32, // Always include the similarity score
 }
 

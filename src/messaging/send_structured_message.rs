@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result as AnyhowResult};
+use anyhow::Result as AnyhowResult;
 use chrono::Utc;
 use iggy::clients::client::IggyClient;
 use iggy::messages::send_messages::Message;
