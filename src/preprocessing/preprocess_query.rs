@@ -1,6 +1,8 @@
 use super::language_patterns::LANGUAGE_PATTERNS;
-use super::ProcessedQuery;
 use super::EMAIL_REGEX;
+use crate::config::LanguagePatterns;
+use crate::config::NegationPattern;
+use crate::config::ProcessedQuery;
 use crate::filters::extract_app_name::extract_app_name;
 use std::collections::HashMap;
 
@@ -26,9 +28,6 @@ pub fn preprocess_query(query: &str, language: &str) -> ProcessedQuery {
         is_negated,
     }
 }
-
-use super::language_patterns::LanguagePatterns;
-use super::language_patterns::NegationPattern;
 
 fn count_negations(query: &str, patterns: &[NegationPattern]) -> i32 {
     let query = query.to_lowercase();
@@ -64,7 +63,7 @@ fn clean_text(text: &str, patterns: &LanguagePatterns) -> String {
     cleaned.replace("  ", " ").trim().to_string()
 }
 
-fn extract_email(text: &str) -> Option<String> {
+pub fn extract_email(text: &str) -> Option<String> {
     EMAIL_REGEX.find(text).map(|m| m.as_str().to_string())
 }
 

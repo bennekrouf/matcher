@@ -1,11 +1,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
-pub struct NegationPattern {
-    pub pattern: &'static str,
-    pub count: i32,
-}
+use crate::config::{LanguagePatterns, NegationPattern};
 
 lazy_static! {
     pub static ref LANGUAGE_PATTERNS: HashMap<&'static str, LanguagePatterns> = {
@@ -54,10 +50,4 @@ lazy_static! {
 
         m
     };
-}
-
-pub struct LanguagePatterns {
-    pub negations: Vec<NegationPattern>,
-    pub articles: Vec<&'static str>,
-    pub polite_phrases: Vec<&'static str>,
 }

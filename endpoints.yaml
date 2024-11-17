@@ -43,5 +43,5 @@ endpoints:
         description: "Adresse email du destinataire"
         required: true
       - name: "title"
-        description: "Adresse email du destinataire"
+        description: "Titre du mail"
         required: false

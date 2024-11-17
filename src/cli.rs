@@ -7,7 +7,7 @@ use clap::Parser;
     about = "Match natural language queries to endpoints",
     long_about = "A tool for semantically matching natural language queries to API endpoints using embeddings",
     version,
-    author = "Your Name <your.email@example.com>",
+    author = "Mohamed Bennekrouf <mb@mb.ch>",
     help_template = "{about}\n\nUSAGE:\n    {usage}\n\n{options}"
 )]
 pub struct Args {

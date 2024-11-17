@@ -6,8 +6,7 @@ use lancedb::{DistanceType, Table};
 
 use super::process_search_batch::process_search_batch;
 use crate::candle::get_embeddings::get_embeddings;
-use crate::config::Config;
-use crate::database::SearchResult;
+use crate::config::{Config, SearchResult};
 use crate::preprocessing::preprocess_query::preprocess_query;
 use futures::StreamExt;
 

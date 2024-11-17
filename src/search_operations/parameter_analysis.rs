@@ -1,13 +1,6 @@
-use crate::config::{Endpoint, Parameter};
+use crate::config::{Endpoint, ParameterAnalysis};
 use std::collections::HashMap;
 use tracing::{debug, info};
-
-#[derive(Debug, Clone)]
-pub struct ParameterAnalysis {
-    pub missing_required: Vec<Parameter>,
-    pub missing_optional: Vec<Parameter>,
-    pub found: HashMap<String, String>,
-}
 
 impl Endpoint {
     pub fn analyze_parameters(

@@ -1,11 +1,33 @@
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Parameter {
     pub name: String,
     pub description: String,
     pub required: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SearchResult {
+    pub endpoint_id: String,
+    pub pattern: String,
+    pub similarity: f32,
+    pub parameters: HashMap<String, String>,
+    pub parameter_analysis: ParameterAnalysis,
+}
+
+#[derive(Debug)]
+pub struct ProcessedQuery {
+    pub cleaned_text: String,
+    pub parameters: HashMap<String, String>,
+    pub is_negated: bool,
+}
+
+pub struct SearchAttempt {
+    pub result: Option<SearchResult>,
+    #[allow(dead_code)]
+    pub similarity: f32, // Always include the similarity score
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -17,6 +39,25 @@ pub struct Endpoint {
     pub description: String,
     #[serde(default)]
     pub parameters: Vec<Parameter>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParameterAnalysis {
+    pub missing_required: Vec<Parameter>,
+    pub missing_optional: Vec<Parameter>,
+    pub found: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NegationPattern {
+    pub pattern: &'static str,
+    pub count: i32,
+}
+
+pub struct LanguagePatterns {
+    pub negations: Vec<NegationPattern>,
+    pub articles: Vec<&'static str>,
+    pub polite_phrases: Vec<&'static str>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

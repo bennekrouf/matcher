@@ -1,6 +1,5 @@
 use super::db::VectorDB;
-use crate::config::Config;
-use crate::database::SearchResult;
+use crate::config::{Config, SearchResult};
 use crate::search_operations::search_similar;
 use anyhow::Result as AnyhowResult;
 

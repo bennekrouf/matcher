@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
     // use super::*;
-    use crate::config::Config;
-    use crate::database::VectorDB;
+    use crate::{config::Config, VectorDB};
     use anyhow::Result as AnyhowResult;
     // use pretty_assertions::assert_eq;
 

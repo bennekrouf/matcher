@@ -1,61 +1,80 @@
 use anyhow::Result as AnyhowResult;
-use arrow_array::{Array, Float32Array, RecordBatch, StringArray};
+use arrow_array::{Array, RecordBatch};
 
-use super::process_single_result::process_single_result;
-use crate::config::Config;
-use crate::database::SearchResult;
-use crate::preprocessing::ProcessedQuery;
+use crate::{
+    config::{Config, ProcessedQuery, SearchResult},
+    filters::extract_parameters::extract_parameters,
+};
 
 pub async fn process_search_batch(
-    rb: RecordBatch,
+    batch: RecordBatch,
     processed: &ProcessedQuery,
     config: &Config,
 ) -> AnyhowResult<(Vec<SearchResult>, f32)> {
-    println!("Processing record batch...");
-
-    //let mut matches: Vec<SearchResult> = Vec::new();
+    let mut results = Vec::new();
     let mut best_similarity: f32 = 0.0;
 
-    let endpoint_id_column = rb
-        .column_by_name("endpoint_id")
-        .unwrap()
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .unwrap();
-
-    let pattern_column = rb
+    // Get column arrays from the batch with correct column names
+    let pattern_array = batch
         .column_by_name("pattern")
-        .unwrap()
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .unwrap();
+        .ok_or_else(|| anyhow::anyhow!("Missing pattern column"))?;
+    let endpoint_id_array = batch
+        .column_by_name("endpoint_id")
+        .ok_or_else(|| anyhow::anyhow!("Missing endpoint_id column"))?;
+    let distance_array = batch
+        .column_by_name("_distance") // Changed from "distance" to "_distance"
+        .ok_or_else(|| anyhow::anyhow!("Missing _distance column"))?;
 
-    let distance_column = rb
-        .column_by_name("_distance")
-        .unwrap()
-        .as_any()
-        .downcast_ref::<Float32Array>()
-        .unwrap();
+    for row_idx in 0..batch.num_rows() {
+        let pattern = pattern_array
+            .as_any()
+            .downcast_ref::<arrow::array::StringArray>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get pattern as string"))?
+            .value(row_idx);
 
-    println!("Found {} results in batch", pattern_column.len());
-    let mut matches = Vec::new();
+        let endpoint_id = endpoint_id_array
+            .as_any()
+            .downcast_ref::<arrow::array::StringArray>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get endpoint_id as string"))?
+            .value(row_idx);
 
-    for i in 0..pattern_column.len() {
-        let similarity = 1.0 - distance_column.value(i);
+        let distance = distance_array
+            .as_any()
+            .downcast_ref::<arrow::array::Float32Array>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get _distance as float"))?
+            .value(row_idx);
+
+        let endpoint = config
+            .endpoints
+            .iter()
+            .find(|e| e.id == endpoint_id)
+            .ok_or_else(|| anyhow::anyhow!("Endpoint not found: {}", endpoint_id))?;
+
+        let mut parameters = processed.parameters.clone();
+        if !parameters.is_empty() {
+            let pattern_params = extract_parameters(&processed.cleaned_text, pattern)?;
+            for (key, value) in pattern_params {
+                if !parameters.contains_key(&key) {
+                    parameters.insert(key, value);
+                }
+            }
+        } else {
+            parameters = extract_parameters(&processed.cleaned_text, pattern)?;
+        }
+
+        let parameter_analysis = endpoint.analyze_parameters(&parameters);
+
+        let similarity = 1.0 - distance;
         best_similarity = best_similarity.max(similarity);
 
-        let result = process_single_result(
-            i,
-            pattern_column.value(i),
-            endpoint_id_column.value(i),
+        results.push(SearchResult {
+            endpoint_id: endpoint_id.to_string(),
+            pattern: pattern.to_string(),
             similarity,
-            processed,
-            config,
-        )
-        .await?;
-
-        matches.extend(result.result);
+            parameters,
+            parameter_analysis,
+        });
     }
 
-    Ok((matches, best_similarity))
+    Ok((results, best_similarity))
 }

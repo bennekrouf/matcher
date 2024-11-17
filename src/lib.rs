@@ -21,5 +21,4 @@ pub use config::Config;
 pub use constants::*;
 pub use database::initialization::table_init::initialize_table;
 pub use grpc::start_grpc_server::start_grpc_server;
-pub use preprocessing::language_patterns::NegationPattern;
 pub use process_search_results::process_search_results;

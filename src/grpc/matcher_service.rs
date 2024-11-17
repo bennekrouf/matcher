@@ -56,23 +56,13 @@ impl matcher::matcher_server::Matcher for MatcherService {
         let matches: Vec<matcher::EndpointMatch> = results
             .iter()
             .map(|result| {
-                // Find corresponding endpoint configuration
-                let endpoint = self
-                    .config
-                    .endpoints
-                    .iter()
-                    .find(|e| e.id == result.endpoint_id)
-                    .expect("Endpoint not found in config");
-
-                // Analyze parameters
-                let param_analysis = endpoint.analyze_parameters(&result.parameters);
-
                 EndpointMatch {
                     endpoint_id: result.endpoint_id.clone(),
-                    similarity: (1.0 - result.similarity) as f64,
+                    similarity: result.similarity as f64, // Remove the 1.0 - conversion
                     parameters: result.parameters.clone(),
                     is_negated: processed.is_negated,
-                    missing_required: param_analysis
+                    missing_required: result
+                        .parameter_analysis
                         .missing_required
                         .iter()
                         .map(|p| matcher::ParameterInfo {
@@ -81,7 +71,8 @@ impl matcher::matcher_server::Matcher for MatcherService {
                             required: true,
                         })
                         .collect(),
-                    missing_optional: param_analysis
+                    missing_optional: result
+                        .parameter_analysis
                         .missing_optional
                         .iter()
                         .map(|p| matcher::ParameterInfo {
@@ -94,13 +85,9 @@ impl matcher::matcher_server::Matcher for MatcherService {
             })
             .collect();
 
-        info!(
-            "Returning response with {} matches, best similarity: {}",
-            matches.len(),
-            best_similarity
-        );
+        let score = best_similarity as f64; // This should match the similarities now
         let has_matches = !matches.is_empty();
-        let score = best_similarity as f64;
+
         Ok(Response::new(matcher::MatchResponse {
             matches,
             score,

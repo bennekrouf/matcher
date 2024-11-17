@@ -1,6 +1,7 @@
-use crate::database::SearchResult;
-use crate::messaging::get_authenticated_iggy_client::get_authenticated_iggy_client;
 use crate::messaging::send_structured_message::send_structured_message;
+use crate::{
+    config::SearchResult, messaging::get_authenticated_iggy_client::get_authenticated_iggy_client,
+};
 use anyhow::{anyhow, Result as AnyhowResult};
 
 pub async fn process_search_results(results: Vec<SearchResult>) -> AnyhowResult<()> {
