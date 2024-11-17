@@ -1,4 +1,14 @@
 endpoints:
+  - id: "order_sandwich"
+    text: "commander un tacos"
+    patterns:
+      - "je veux un tacos sauce {sauce}"
+    description: "Commander un tacos"
+    parameters:
+      - name: "sauce"
+        description: "Sauce"
+        required: true
+
   - id: "analyze_specific_repository"
     text: "lancer analyse"
     patterns:
@@ -17,6 +27,7 @@ endpoints:
   - id: "send_email"
     text: "envoyer email"
     patterns:
+      - "envoie un email à {email} dont le titre est {title}"
       - "envoyer un mail à {email}"
       - "envoyer un email à {email}"
       - "envoie le mail à {email}"
@@ -31,3 +42,6 @@ endpoints:
       - name: "email"
         description: "Adresse email du destinataire"
         required: true
+      - name: "title"
+        description: "Adresse email du destinataire"
+        required: false
