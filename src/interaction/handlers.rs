@@ -5,6 +5,7 @@ use crate::grpc::matcher_service::matcher::{EndpointMatch, InteractiveResponse, 
 use crate::interaction::state::InteractionState;
 use crate::preprocessing::preprocess_query::preprocess_query;
 use tokio::sync::mpsc::Sender;
+use tokio::time::Duration;
 use tonic::Status;
 use tracing::error;
 
@@ -100,11 +101,17 @@ async fn send_confirmation_prompt(
         matched_endpoint: Some(endpoint_match.clone()),
     };
 
-    tx.send(Ok(InteractiveResponse {
-        response: Some(InteractiveResponseType::ConfirmationPrompt(confirmation)),
-    }))
-    .await
-    .map_err(|e| Status::internal(format!("Failed to send confirmation prompt: {}", e)))
+    let _ = tx
+        .send(Ok(InteractiveResponse {
+            response: Some(InteractiveResponseType::ConfirmationPrompt(confirmation)),
+        }))
+        .await;
+    //.map_err(|e| Status::internal(format!("Failed to send confirmation prompt: {}", e)))
+
+    // Add delay after sending
+    tokio::time::sleep(Duration::from_millis(5000)).await;
+
+    Ok(())
 }
 
 async fn send_first_parameter_prompt(
@@ -119,11 +126,15 @@ async fn send_first_parameter_prompt(
             endpoint_id: endpoint_match.endpoint_id.clone(),
         };
 
-        tx.send(Ok(InteractiveResponse {
-            response: Some(InteractiveResponseType::ParameterPrompt(parameter)),
-        }))
-        .await
-        .map_err(|e| Status::internal(format!("Failed to send parameter prompt: {}", e)))
+        let _ = tx
+            .send(Ok(InteractiveResponse {
+                response: Some(InteractiveResponseType::ParameterPrompt(parameter)),
+            }))
+            .await;
+        //.map_err(|e| Status::internal(format!("Failed to send parameter prompt: {}", e)))
+
+        tokio::time::sleep(Duration::from_millis(5000)).await;
+        Ok(())
     } else {
         Ok(())
     }
