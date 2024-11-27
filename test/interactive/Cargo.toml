@@ -1,0 +1,17 @@
+[package]
+name = "interactive"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+colored = "2.1.0"
+futures = "0.3.31"
+futures-util = "0.3.31"
+prost = "0.13.3"
+tokio = { version = "1.41.1", features = ["full"] }
+tokio-stream = "0.1.16"
+tonic = "0.12.3"
+matcher = { path = "../.." }
+
+[build-dependencies]
+tonic-build = "0.12.3"

@@ -3,3 +3,7 @@
 data
 data/mydb
 
+
+# Test target directories
+/test/**/target/
+

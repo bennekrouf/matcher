@@ -5,6 +5,7 @@ mod constants;
 mod database;
 mod filters;
 mod grpc;
+mod interaction;
 mod messaging;
 mod preprocessing;
 mod process_search_results;
