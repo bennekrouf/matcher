@@ -172,7 +172,7 @@ grpcurl -d @ -plaintext localhost:50030 matcher.Matcher/InteractiveMatch
 {"confirmation_response": {"confirmed": true}}
 
 # Send parameter values when prompted
-{"parameter_value": {"parameter_name": "recipient", "value": "test@example.com"}}
+{"parameter_value": {"parameter_name": "email", "value": "test@example.com"}}
 ```
 
 ### Development Commands

@@ -200,3 +200,91 @@ async fn send_no_matches_response(
 fn has_missing_parameters(endpoint_match: &EndpointMatch) -> bool {
     !endpoint_match.missing_required.is_empty()
 }
+
+pub async fn handle_parameter_value(
+    parameter_value: crate::grpc::matcher_service::matcher::ParameterValue,
+    state: InteractionState,
+    tx: &Sender<Result<InteractiveResponse, Status>>,
+) -> Option<InteractionState> {
+    match state {
+        InteractionState::CollectingParameters {
+            mut endpoint_match,
+            mut collected_parameters,
+        } => {
+            println!(
+                "🔄 SERVER: Processing parameter value: {}",
+                parameter_value.parameter_name
+            );
+
+            // Store the received parameter
+            collected_parameters.insert(
+                parameter_value.parameter_name.clone(),
+                parameter_value.value,
+            );
+
+            // Update endpoint parameters
+            endpoint_match.parameters = collected_parameters.clone();
+
+            // Send parameter accepted confirmation
+            if let Err(e) =
+                send_parameter_accepted_response(&parameter_value.parameter_name, tx).await
+            {
+                error!("Failed to send parameter acceptance: {}", e);
+                return None;
+            }
+
+            // Add a small delay before next action
+            tokio::time::sleep(Duration::from_millis(1000)).await;
+
+            // Filter out the parameter we just received
+            endpoint_match
+                .missing_required
+                .retain(|p| p.name != parameter_value.parameter_name);
+
+            // Check if we need more parameters
+            if !endpoint_match.missing_required.is_empty() {
+                println!("📤 SERVER: Requesting next parameter");
+                if let Err(e) = send_first_parameter_prompt(&endpoint_match, tx).await {
+                    error!("Failed to send parameter prompt: {}", e);
+                    return None;
+                }
+                Some(InteractionState::CollectingParameters {
+                    endpoint_match,
+                    collected_parameters,
+                })
+            } else {
+                println!("✅ SERVER: All required parameters collected");
+                if let Err(e) = send_final_match_response(&endpoint_match, tx).await {
+                    error!("Failed to send final match: {}", e);
+                    return None;
+                }
+                Some(InteractionState::Completed { endpoint_match })
+            }
+        }
+        _ => {
+            error!("Received parameter value in invalid state");
+            None
+        }
+    }
+}
+
+async fn send_parameter_accepted_response(
+    parameter_name: &str,
+    tx: &Sender<Result<InteractiveResponse, Status>>,
+) -> Result<(), Status> {
+    let response = MatchResponse {
+        matches: vec![],
+        score: 1.0,
+        has_matches: true,
+        // You might need to add a message field to your proto if you want to include custom messages
+        // For now, we're using the existing fields
+    };
+
+    println!("✅ SERVER: Parameter '{}' accepted", parameter_name);
+
+    tx.send(Ok(InteractiveResponse {
+        response: Some(InteractiveResponseType::MatchResult(response)),
+    }))
+    .await
+    .map_err(|e| Status::internal(format!("Failed to send parameter acceptance: {}", e)))
+}

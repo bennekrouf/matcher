@@ -24,11 +24,11 @@ pub struct ProcessedQuery {
     pub is_negated: bool,
 }
 
-pub struct SearchAttempt {
-    pub result: Option<SearchResult>,
-    #[allow(dead_code)]
-    pub similarity: f32, // Always include the similarity score
-}
+//pub struct SearchAttempt {
+//    pub result: Option<SearchResult>,
+//    #[allow(dead_code)]
+//    pub similarity: f32, // Always include the similarity score
+//}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Endpoint {

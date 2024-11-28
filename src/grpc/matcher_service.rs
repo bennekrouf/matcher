@@ -1,9 +1,12 @@
 use crate::config::Config;
 use crate::database::vector_db::VectorDB;
-use crate::interaction::handlers::{handle_confirmation, handle_initial_query};
+use crate::interaction::handlers::{
+    handle_confirmation, handle_initial_query, handle_parameter_value,
+};
 use crate::interaction::state::InteractionState;
 use crate::preprocessing::preprocess_query::preprocess_query;
 use futures::StreamExt;
+use matcher::MatchResponse;
 use matcher::{
     interactive_request::Request as InteractiveRequestType, EndpointMatch, InteractiveRequest,
     InteractiveResponse,
@@ -18,6 +21,7 @@ pub mod matcher {
     tonic::include_proto!("matcher");
 }
 
+use crate::grpc::matcher_service::matcher::interactive_response::Response as InteractiveResponseType;
 pub struct MatcherService {
     #[allow(dead_code)]
     pub config: Arc<Config>,
@@ -119,37 +123,85 @@ impl matcher::matcher_server::Matcher for MatcherService {
 
             while let Some(req) = in_stream.next().await {
                 match req {
-                    Ok(interactive_req) => {
-                        match interactive_req.request {
-                            Some(InteractiveRequestType::InitialQuery(initial_query)) => {
-                                state = handle_initial_query(
-                                    &initial_query.query,
-                                    &initial_query.language,
-                                    &db,
-                                    &config,
-                                    &tx,
-                                )
-                                .await;
-                            }
-                            Some(InteractiveRequestType::ConfirmationResponse(confirmation)) => {
-                                if let Some(current_state) = state {
-                                    state = handle_confirmation(
-                                        confirmation.confirmed,
-                                        current_state,
-                                        &tx,
-                                    )
-                                    .await;
-                                }
-                            }
-                            Some(InteractiveRequestType::ParameterValue(param_value)) => {
-                                // Handle parameter collection in a separate handler
-                                // (implementation similar to previous version)
-                            }
-                            None => {
-                                error!("Received empty request");
+                    Ok(interactive_req) => match interactive_req.request {
+                        Some(InteractiveRequestType::InitialQuery(initial_query)) => {
+                            state = handle_initial_query(
+                                &initial_query.query,
+                                &initial_query.language,
+                                &db,
+                                &config,
+                                &tx,
+                            )
+                            .await;
+                            println!("State after initial query: {:?}", state); // Debug log
+                        }
+                        Some(InteractiveRequestType::ConfirmationResponse(confirmation)) => {
+                            if let Some(current_state) = state {
+                                state =
+                                    handle_confirmation(confirmation.confirmed, current_state, &tx)
+                                        .await;
+                                println!("State after confirmation: {:?}", state);
+                                // Debug log
                             }
                         }
-                    }
+                        Some(InteractiveRequestType::ParameterValue(param_value)) => {
+                            if let Some(current_state) = state.take() {
+                                state =
+                                    handle_parameter_value(param_value, current_state, &tx).await;
+
+                                // Handle completed state
+                                if let Some(InteractionState::Completed { endpoint_match }) = &state
+                                {
+                                    // Now we're actually using the endpoint_match field
+                                    println!(
+                                        "✅ Executing completed action for endpoint: {}",
+                                        endpoint_match.endpoint_id
+                                    );
+
+                                    match execute_completed_action(endpoint_match).await {
+                                        Ok(_) => {
+                                            let response = MatchResponse {
+                                                matches: vec![endpoint_match.clone()],
+                                                score: 1.0,
+                                                has_matches: true,
+                                            };
+
+                                            if let Err(e) = tx
+                                                .send(Ok(InteractiveResponse {
+                                                    response: Some(
+                                                        InteractiveResponseType::MatchResult(
+                                                            response,
+                                                        ),
+                                                    ),
+                                                }))
+                                                .await
+                                            {
+                                                error!("Failed to send completion response: {}", e);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!("Failed to execute completed action: {}", e);
+                                            if let Err(send_err) = tx
+                                                .send(Err(Status::internal(format!(
+                                                    "Action execution failed: {}",
+                                                    e
+                                                ))))
+                                                .await
+                                            {
+                                                error!(
+                                                    "Failed to send error response: {}",
+                                                    send_err
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        None => {
+                            error!("Received empty request");
+                        }
+                    },
                     Err(e) => {
                         error!("Error receiving request: {}", e);
                         let _ = tx.send(Err(Status::internal("Stream error"))).await;
@@ -163,4 +215,47 @@ impl matcher::matcher_server::Matcher for MatcherService {
             tokio_stream::wrappers::ReceiverStream::new(rx),
         )))
     }
+}
+
+//use crate::grpc::matcher_service::matcher::EndpointMatch;
+use crate::messaging::get_authenticated_iggy_client::get_authenticated_iggy_client;
+use crate::messaging::send_structured_message::send_structured_message;
+use anyhow::{anyhow, Result as AnyhowResult};
+//use tracing::{error, info};
+
+async fn execute_completed_action(endpoint_match: &EndpointMatch) -> AnyhowResult<()> {
+    info!(
+        "Processing completed match for endpoint: {}",
+        endpoint_match.endpoint_id
+    );
+
+    let client = get_authenticated_iggy_client().await?;
+
+    // Convert parameters map to vector of values
+    let message_params: Vec<String> = endpoint_match.parameters.values().cloned().collect();
+
+    // Send message to Iggy
+    send_structured_message(
+        &client,
+        "gibro",        // stream name
+        "notification", // topic name
+        &endpoint_match.endpoint_id,
+        message_params,
+    )
+    .await
+    .map_err(|e| {
+        error!(
+            "Failed to send message for endpoint {}: {}",
+            endpoint_match.endpoint_id, e
+        );
+        anyhow!("Message sending failed: {}", e)
+    })?;
+
+    info!(
+        "Sent notification for endpoint: {} with similarity: {}",
+        endpoint_match.endpoint_id, endpoint_match.similarity
+    );
+
+    info!("Completed processing match");
+    Ok(())
 }

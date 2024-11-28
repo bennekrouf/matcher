@@ -11,7 +11,7 @@ pub enum InteractionState {
         collected_parameters: HashMap<String, String>,
     },
     Completed {
-        endpoint_match: EndpointMatch,
+        endpoint_match: EndpointMatch, // Kept if needed for final response
     },
 }
 
@@ -20,32 +20,11 @@ impl InteractionState {
         InteractionState::AwaitingConfirmation { endpoint_match }
     }
 
-    pub fn into_collecting_parameters(self) -> Option<Self> {
-        match self {
-            InteractionState::AwaitingConfirmation { endpoint_match } => {
-                Some(InteractionState::CollectingParameters {
-                    endpoint_match,
-                    collected_parameters: HashMap::new(),
-                })
-            }
-            _ => None,
-        }
-    }
-
-    pub fn into_completed(self) -> Option<Self> {
-        match self {
-            InteractionState::CollectingParameters { endpoint_match, .. } => {
-                Some(InteractionState::Completed { endpoint_match })
-            }
-            _ => None,
-        }
-    }
-
-    pub fn get_endpoint_match(&self) -> &EndpointMatch {
-        match self {
-            InteractionState::AwaitingConfirmation { endpoint_match } => endpoint_match,
-            InteractionState::CollectingParameters { endpoint_match, .. } => endpoint_match,
-            InteractionState::Completed { endpoint_match } => endpoint_match,
-        }
-    }
+    //pub fn get_endpoint_match(&self) -> &EndpointMatch {
+    //    match self {
+    //        InteractionState::AwaitingConfirmation { endpoint_match } => endpoint_match,
+    //        InteractionState::CollectingParameters { endpoint_match, .. } => endpoint_match,
+    //        InteractionState::Completed { endpoint_match } => endpoint_match,
+    //    }
+    //}
 }
