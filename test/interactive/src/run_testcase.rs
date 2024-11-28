@@ -45,13 +45,15 @@ pub async fn run_test_case(
     let initial_request = InteractiveRequest {
         request: Some(matcher::interactive_request::Request::InitialQuery(
             InitialQuery {
-                query: test_case.query,
+                query: test_case.query.clone(),
                 language: test_case.language,
             },
         )),
     };
 
+    println!("📤 CLIENT: Sending initial query: {}", &test_case.query);
     tx_req.send(initial_request).await?;
+    println!("✅ CLIENT: Initial query sent, waiting for server response...\n");
 
     let mut parameter_index = 0;
 
@@ -60,13 +62,20 @@ pub async fn run_test_case(
         match response? {
             response if response.response.is_some() => match response.response.unwrap() {
                 matcher::interactive_response::Response::ConfirmationPrompt(prompt) => {
-                    println!("\n{}", "Received confirmation prompt:".yellow());
+                    println!(
+                        "📥 CLIENT: Received confirmation prompt after {} seconds",
+                        start_time.elapsed().as_secs()
+                    );
+                    //println!("\n{}", "Received confirmation prompt:".yellow());
                     println!(
                         "Endpoint: {}",
                         prompt
                             .matched_endpoint
                             .map_or("None".to_string(), |e| e.endpoint_id)
                     );
+
+                    println!("🤔 CLIENT: Thinking before confirming...");
+                    tokio::time::sleep(Duration::from_secs(1)).await;
 
                     let confirmation = InteractiveRequest {
                         request: Some(matcher::interactive_request::Request::ConfirmationResponse(
@@ -76,8 +85,12 @@ pub async fn run_test_case(
                         )),
                     };
 
-                    println!("Sending confirmation: {}", test_case.confirm);
+                    println!(
+                        "📤 CLIENT: Sending confirmation response: {}",
+                        test_case.confirm
+                    );
                     tx_req_clone.send(confirmation).await?;
+                    println!("✅ CLIENT: Confirmation sent, waiting for server response...\n");
                 }
                 matcher::interactive_response::Response::ParameterPrompt(prompt) => {
                     println!("\n{}", "Received parameter prompt:".yellow());

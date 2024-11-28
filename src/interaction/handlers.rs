@@ -97,10 +97,18 @@ async fn send_confirmation_prompt(
     endpoint_match: &EndpointMatch,
     tx: &Sender<Result<InteractiveResponse, Status>>,
 ) -> Result<(), Status> {
+    println!("🔄 SERVER: Processing query before sending confirmation...");
+
+    // Simulate server processing time
+    tokio::time::sleep(Duration::from_secs(2)).await;
     let confirmation = crate::grpc::matcher_service::matcher::ConfirmationPrompt {
         matched_endpoint: Some(endpoint_match.clone()),
     };
 
+    println!(
+        "📤 SERVER: Sending confirmation prompt for endpoint: {}",
+        endpoint_match.endpoint_id
+    );
     let _ = tx
         .send(Ok(InteractiveResponse {
             response: Some(InteractiveResponseType::ConfirmationPrompt(confirmation)),
