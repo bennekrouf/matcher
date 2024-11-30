@@ -12,9 +12,6 @@ mod preprocessing;
 mod process_search_results;
 mod search_operations;
 
-#[cfg(test)]
-mod tests;
-// Re-export everything that main.rs needs
 pub use crate::database::vector_db::VectorDB;
 pub use candle::load_model::load_model;
 pub use candle::MODEL_PATH;
