@@ -1,5 +1,8 @@
-use crate::config::Config;
 use crate::database::vector_db::VectorDB;
+use crate::{
+    config::Config,
+    health::{health::health_server::HealthServer, HealthService},
+};
 
 use super::matcher_service::matcher::matcher_server::MatcherServer;
 use super::matcher_service::MatcherService;
@@ -22,7 +25,11 @@ pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::e
         }
     };
 
-    let matcher_service = MatcherService { config, db };
+    let matcher_service = MatcherService {
+        config,
+        db: db.clone(),
+    };
+    let health_service = HealthService::new(db);
 
     // Get the file descriptor set
     let descriptor_set = include_bytes!(concat!(env!("OUT_DIR"), "/matcher_descriptor.bin"));
@@ -35,6 +42,7 @@ pub async fn start_grpc_server(config: Arc<Config>) -> Result<(), Box<dyn std::e
     info!("Starting gRPC server on {}", addr);
     Server::builder()
         .add_service(MatcherServer::new(matcher_service))
+        .add_service(HealthServer::new(health_service))
         .add_service(reflection_service)
         .serve(addr)
         .await?;
