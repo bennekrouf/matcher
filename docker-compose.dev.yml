@@ -1,0 +1,26 @@
+# docker-compose.dev.yml
+version: '3.8'
+
+services:
+  matcher:
+    build: 
+      context: .
+      target: builder    # Use the builder stage only
+    ports:
+      - "50030:50030"
+    volumes:
+      - .:/usr/src/app  # Mount your code
+      - target:/usr/src/app/target  # Cache target directory
+    environment:
+      - RUST_LOG=info
+    command: cargo watch -x run -- --server
+
+  envoy:
+    image: envoyproxy/envoy:v1.28-latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
+
+volumes:
+  target:    # Named volume for target directory

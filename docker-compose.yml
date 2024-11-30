@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  matcher:
+    build: .
+    ports:
+      - "50030:50030"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - RUST_LOG=info
+    command: ["./matcher", "--server"]
+
+  envoy:
+    image: envoyproxy/envoy:v1.28-latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
+    depends_on:
+      - matcher
+
+networks:
+  default:
+    name: matcher-network
+    driver: bridge

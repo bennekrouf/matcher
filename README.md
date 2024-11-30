@@ -188,6 +188,20 @@ cargo run -- --reload --query "run the best analysis"
 cargo run -- --reload --debug --all --query "run an analysis"
 ```
 
+
+#### Start dev environment with docker compose to have auto refresh:
+```bash
+
+# Start development environment
+docker compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f matcher
+
+# When done
+docker compose -f docker-compose.dev.yml down
+```
+
 ## Vector Database Structure
 
 The project uses LanceDB for storing and searching endpoint embeddings:
