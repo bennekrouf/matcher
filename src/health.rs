@@ -2,6 +2,7 @@ use crate::database::vector_db::VectorDB;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
+#[allow(clippy::module_inception)]
 pub mod health {
     tonic::include_proto!("grpc.health.v1");
 }
