@@ -129,6 +129,19 @@ pub async fn run_test_case(
                     }
                     break;
                 }
+                matcher::interactive_response::Response::ParameterAccepted(accepted) => {
+                    println!(
+                        "\n{}",
+                        format!("Parameter '{}' accepted", accepted.parameter_name).green()
+                    );
+                    //if let Some(message) = accepted.message {
+                    println!("Server message: {}", accepted.message);
+                    //}
+                    println!("Waiting for next server response...\n");
+
+                    // No need to send anything here - wait for next server message
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                }
             },
             _ => {
                 println!("{}", "Received empty response".red());

@@ -1,6 +1,5 @@
 # Builder stage
 FROM rust:1.81-slim as builder
-
 # Install build dependencies including C++
 RUN apt-get update && \
     apt-get install -y \
@@ -9,6 +8,7 @@ RUN apt-get update && \
     protobuf-compiler \
     build-essential \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
@@ -22,39 +22,40 @@ RUN cargo build --release
 # Runtime stage
 FROM debian:bookworm-slim
 
-# Install runtime dependencies
+# Install runtime dependencies and logging utilities
 RUN apt-get update && \
-    apt-get install -y ca-certificates libssl3 && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    curl \
+    tini \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Create directories
-RUN mkdir -p /app/models/multilingual-MiniLM /app/data/mydb
+# Create necessary directories including logs
+RUN mkdir -p /app/models/multilingual-MiniLM /app/data/mydb /app/logs
 
-# Copy the executable
+# Copy the executable and config
 COPY --from=builder /usr/src/app/target/release/matcher /app/matcher
-
-# Copy the config file to root level as per CONFIG_PATH
 COPY config/endpoints.yaml /app/endpoints.yaml
 
-# Copy model files to exact MODEL_PATH location
-COPY models/multilingual-MiniLM/config.json /app/models/multilingual-MiniLM/
-COPY models/multilingual-MiniLM/model.ot /app/models/multilingual-MiniLM/
-COPY models/multilingual-MiniLM/tokenizer.json /app/models/multilingual-MiniLM/
+# Download model files during container build
+RUN curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/config.json -o /app/models/multilingual-MiniLM/config.json && \
+    curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json -o /app/models/multilingual-MiniLM/tokenizer.json && \
+    curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/pytorch_model.bin -o /app/models/multilingual-MiniLM/model.ot
 
-# Debug: Print directory structure
-RUN echo "Directory structure:" && \
-    ls -R /app && \
-    echo "Model files:" && \
-    ls -l /app/models/multilingual-MiniLM/ && \
-    echo "Config file:" && \
-    ls -l /app/endpoints.yaml
-
-# Make data directory writable
-RUN chmod -R 777 /app/data
+# Make directories writable
+RUN chmod -R 777 /app/data /app/logs
 
 EXPOSE 50030
 
-# Run with server mode
-CMD ["./matcher", "--server"]
+# Copy initialization script
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Use tini as init system
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Use the initialization script
+CMD ["/app/docker-entrypoint.sh"]
