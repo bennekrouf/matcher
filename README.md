@@ -1,258 +1,223 @@
-
-# API Matcher 
+# API Matcher
 
 A gRPC service that matches natural language queries to API endpoints using embeddings and vector similarity search.
 
 ## Features
 
-- Natural language processing for API endpoint matching
-- Multilingual support (English and French)
-- Interactive parameter collection through gRPC streaming
-- Vector similarity search using LanceDB
-- Embedding-based matching using Sentence Transformers
-- CLI and Server modes
-- Bi-directional streaming for interactive queries
+[Previous features section remains the same...]
 
 ## Architecture
 
-- **Rust Backend**: High-performance gRPC server
-- **Embeddings**: sentence-transformers for semantic understanding
-- **Vector DB**: LanceDB for efficient similarity search
-- **Protocol**: gRPC/Protocol Buffers for client-server communication
+[Previous architecture section remains the same...]
 
 ## Prerequisites
 
 - Rust 1.70 or higher
 - curl (for downloading models)
 - gRPCurl (for testing gRPC endpoints)
-- Docker (optional, for Envoy proxy in development)
+- Docker (for server and development modes)
+- At least 4GB of free disk space for models and Docker images
 
-## Installation
+## Operation Modes
 
-### 1. Clone the Repository
+### 1. Standalone Mode
 
+[Previous standalone mode section remains the same...]
+
+### 2. Docker Server Mode
+
+#### Basic Docker Operations
 ```bash
-git clone [your-repo-url]
-cd api-matcher
+# Build Docker image
+docker build -t api-matcher .
+
+# Run container
+docker run -d \
+  --name api-matcher \
+  -p 50030:50030 \
+  -v api-matcher-data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  api-matcher
+
+# Stop container
+docker stop api-matcher
+
+# Remove container
+docker rm api-matcher
+
+# Remove image
+docker rmi api-matcher
 ```
 
-### 2. Download the Embedding Model
-
-Choose one of these options:
-
+#### Docker Management
 ```bash
-# Option A: English-optimized model (smaller)
-mkdir -p models/all-MiniLM-L6-v2
-curl -L https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json -o models/all-MiniLM-L6-v2/config.json
-curl -L https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json -o models/all-MiniLM-L6-v2/tokenizer.json
-curl -L https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/pytorch_model.bin -o models/all-MiniLM-L6-v2/model.ot
+# Stop all running containers
+docker stop $(docker ps -a -q)
+
+# Remove all stopped containers
+docker rm $(docker ps -a -q)
+
+# Clean up system (remove unused containers, networks, images)
+docker system prune
+
+# Remove everything (use with caution)
+docker system prune -a
 ```
 
+#### Logging
 ```bash
-# Option B: Multilingual model (recommended)
-mkdir -p models/multilingual-MiniLM
-curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/config.json -o models/multilingual-MiniLM/config.json
-curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json -o models/multilingual-MiniLM/tokenizer.json
-curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/pytorch_model.bin -o models/multilingual-MiniLM/model.ot
+# View real-time logs
+docker logs -f api-matcher
+
+# Show last 100 lines with timestamps
+docker logs -f -t --tail 100 api-matcher
+
+# Save logs to file
+docker logs api-matcher > matcher_logs.txt
 ```
 
-### 3. Build the Project
-
+#### Volume Management
 ```bash
-cargo build
+# Run with persistent data and logs
+docker run -d \
+  -p 50030:50030 \
+  -v api-matcher-data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  --name api-matcher \
+  api-matcher
+
+# Check volume status
+docker volume ls
 ```
 
-## Usage
-
-### CLI Mode
-
-The matcher can be used directly from the command line:
-
+#### Debugging
 ```bash
-# Show help
-matcher --help
+# Check container status
+docker ps
+docker stats api-matcher
 
-# Show version
-matcher --version
+# Interactive shell access
+docker exec -it api-matcher /bin/bash
 
-# Basic English query
-matcher -q "run analysis"
-
-# French query with language specification
-matcher -q "lancer l'analyse" --language fr
-
-# Verbose output with multiple results
-matcher -q "run analysis" -v --limit 3
-
-# Reload database and run query
-matcher --reload -q "run analysis" -v
+# Check resource usage
+docker stats
 ```
 
-### Server Mode
+#### Environment Variables
+- `MODEL_VERSION`: Specify model version (default: paraphrase-multilingual-MiniLM-L12-v2)
+- `CONFIG_PATH`: Custom config file path (default: /app/endpoints.yaml)
+- `MODEL_PATH`: Custom model path (default: /app/models/multilingual-MiniLM)
+- `LOG_LEVEL`: Set logging level (default: info)
 
-#### Start the Server
+#### Volumes
+- `/app/data`: Vector database storage
+- `/app/logs`: Application logs
+- `/app/config`: Configuration files
 
+### 3. Development Mode
+
+#### With Auto-Reload
 ```bash
-matcher --server
-```
-
-#### Development Setup with Envoy
-
-1. Create Envoy configuration:
-
-```bash
-# envoy/envoy.yaml
-static_resources:
-  listeners:
-    - name: listener_0
-      address:
-        socket_address: { address: 0.0.0.0, port_value: 9090 }
-      filter_chains:
-        - filters:
-            - name: envoy.filters.network.http_connection_manager
-              typed_config:
-                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-                codec_type: auto
-                stat_prefix: ingress_http
-                route_config:
-                  name: local_route
-                  virtual_hosts:
-                    - name: local_service
-                      domains: ["*"]
-                      routes:
-                        - match: { prefix: "/" }
-                          route:
-                            cluster: matcher_service
-                            timeout: 0s
-                            max_stream_duration:
-                              grpc_timeout_header_max: 0s
-                http_filters:
-                  - name: envoy.filters.http.grpc_web
-                    typed_config:
-                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
-                  - name: envoy.filters.http.cors
-                    typed_config:
-                      "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
-                  - name: envoy.filters.http.router
-                    typed_config:
-                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
-  clusters:
-    - name: matcher_service
-      type: STRICT_DNS
-      dns_lookup_family: V4_ONLY
-      load_assignment:
-        cluster_name: matcher_service
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: host.docker.internal
-                      port_value: 50030
-```
-
-2. Start Envoy proxy:
-
-```bash
-docker-compose up -d
-```
-
-#### Testing gRPC Endpoints
-
-Using grpcurl for interactive testing:
-
-```bash
-# Start interactive session
-grpcurl -d @ -plaintext localhost:50030 matcher.Matcher/InteractiveMatch
-
-# Send initial query
-{"initial_query": {"query": "send email", "language": "fr"}}
-
-# Send confirmation when prompted
-{"confirmation_response": {"confirmed": true}}
-
-# Send parameter values when prompted
-{"parameter_value": {"parameter_name": "email", "value": "test@example.com"}}
-```
-
-### Development Commands
-
-```bash
-# Reload database
-cargo run -- --reload
-
-# Test query with reload
-cargo run -- --reload --query "run the best analysis"
-
-# Debug mode with all matches
-cargo run -- --reload --debug --all --query "run an analysis"
-```
-
-
-#### Start dev environment with docker compose to have auto refresh:
-```bash
-
 # Start development environment
 docker compose -f docker-compose.dev.yml up -d
 
-# View logs
+# View logs in development
 docker compose -f docker-compose.dev.yml logs -f matcher
 
-# When done
+# Stop development environment
 docker compose -f docker-compose.dev.yml down
 ```
 
-## Vector Database Structure
-
-The project uses LanceDB for storing and searching endpoint embeddings:
-
-- Each record contains:
-  - Endpoint ID
-  - Vector embedding (384 dimensions for MiniLM)
-  - Parameter definitions
-  - Language specification
-  - Example queries
-
-## Configuration
-
-Key configuration options in `config.yml`:
-
+#### Development Docker Compose
 ```yaml
-model:
-  path: "models/multilingual-MiniLM"
-  dimension: 384
-
-database:
-  path: "data/mydb"
-  table: "endpoints"
-
-server:
-  host: "0.0.0.0"
-  port: 50030
+version: '3.8'
+services:
+  matcher:
+    build: 
+      context: .
+      target: development
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/target
+    ports:
+      - "50030:50030"
+    environment:
+      - RUST_LOG=debug
+    command: cargo watch -x run -- --server
 ```
 
-## Testing
+## Troubleshooting
 
-Run the test suite:
+### Common Docker Issues
+
+1. **Container won't start**
+```bash
+# Check logs for errors
+docker logs api-matcher
+
+# Verify port availability
+lsof -i :50030
+
+# Check container status
+docker ps -a
+```
+
+2. **Performance Issues**
+```bash
+# Monitor resource usage
+docker stats api-matcher
+
+# Check available disk space
+docker system df
+```
+
+3. **Clean Up Resources**
+```bash
+# Remove unused resources
+docker system prune
+
+# Remove specific container and image
+docker stop api-matcher && \
+docker rm api-matcher && \
+docker rmi api-matcher
+```
+
+### Model Download Issues
 
 ```bash
-cargo test
+# Manually download models
+docker exec -it api-matcher bash
+curl -L [model-url] -o [model-path]
 
-# Run interactive tests
-cd tests/interactive
-cargo run
+# Verify model files
+docker exec api-matcher ls -l /app/models/multilingual-MiniLM
 ```
 
-## Docker Support
+## Production Deployment
 
+### Resource Requirements
+- Minimum 2 CPU cores
+- 4GB RAM
+- 10GB disk space
+- Docker 20.10 or newer
+
+### Security Considerations
+- Run container as non-root user
+- Use Docker secrets for sensitive data
+- Enable Docker content trust
+- Regular security updates
+
+### Monitoring
 ```bash
-# Build the image
-docker build -t api-matcher .
+# Basic health check
+docker inspect api-matcher
 
-# Run the container
-docker run -p 50030:50030 api-matcher
+# Resource monitoring
+docker stats api-matcher
+
+# Log monitoring
+docker logs -f api-matcher
 ```
-
 ## Contributing
 
 1. Fork the repository

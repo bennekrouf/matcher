@@ -158,11 +158,19 @@ async fn send_final_match_response(
         has_matches: true,
     };
 
-    tx.send(Ok(InteractiveResponse {
-        response: Some(MatchResult(response)),
-    }))
-    .await
-    .map_err(|e| Status::internal(format!("Failed to send final match: {}", e)))
+    // Use try_send or check if channel is still open
+    match tx
+        .send(Ok(InteractiveResponse {
+            response: Some(MatchResult(response)),
+        }))
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("Channel closed before final response could be sent: {}", e);
+            Err(Status::internal("Channel closed"))
+        }
+    }
 }
 
 async fn send_cancelled_response(
@@ -224,6 +232,10 @@ pub async fn handle_parameter_value(
 
             // Update endpoint parameters
             endpoint_match.parameters = collected_parameters.clone();
+            // Filter out the parameter we just received
+            endpoint_match
+                .missing_required
+                .retain(|p| p.name != parameter_value.parameter_name);
 
             // Send parameter accepted confirmation
             if let Err(e) =
@@ -235,11 +247,6 @@ pub async fn handle_parameter_value(
 
             // Add a small delay before next action
             tokio::time::sleep(Duration::from_millis(1000)).await;
-
-            // Filter out the parameter we just received
-            endpoint_match
-                .missing_required
-                .retain(|p| p.name != parameter_value.parameter_name);
 
             // Check if we need more parameters
             if !endpoint_match.missing_required.is_empty() {
