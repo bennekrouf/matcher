@@ -68,4 +68,11 @@ impl VectorDB {
             patterns_schema: Arc::new(PATTERNS_SCHEMA.clone()),
         })
     }
+
+    pub async fn check_connection(&self) -> Result<(), Box<dyn std::error::Error>> {
+        match self.patterns_table.version().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Box::new(e)),
+        }
+    }
 }

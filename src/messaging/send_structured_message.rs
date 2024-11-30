@@ -13,7 +13,7 @@ pub struct MessagePayload {
 }
 
 pub async fn send_structured_message(
-    client: &Box<IggyClient>,
+    client: &IggyClient,
     tenant: &str,
     topic: &str,
     action: &str,

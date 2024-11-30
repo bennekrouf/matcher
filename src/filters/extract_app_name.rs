@@ -18,10 +18,10 @@ pub fn extract_app_name(text: &str) -> Option<String> {
             let potential_app = remaining[..end_pos].trim();
 
             // Basic validation of app name
-            if !potential_app.is_empty() 
+            if !potential_app.is_empty()
                 && potential_app.len() >= 2  // Minimum length
                 && !potential_app.contains('@')  // Not an email
-                && !potential_app.contains(' ')  // Single word
+                && !potential_app.contains(' ')
             {
                 return Some(potential_app.to_string());
             }
@@ -29,4 +29,3 @@ pub fn extract_app_name(text: &str) -> Option<String> {
     }
     None
 }
-
