@@ -1,0 +1,21 @@
+endpoints:
+  - id: "run_analysis"
+    text: "run analysis"
+    variations:
+      - "run the analysis"
+      - "run an analysis"
+      - "execute analysis"
+      - "start analysis"
+      - "begin analysis"
+      - "please run analysis"
+      - "run an analysis"
+    description: "Execute an analysis task"
+
+  - id: "perform_calc"
+    text: "perform calculation"
+    variations:
+      - "do calculation"
+      - "calculate"
+      - "compute"
+      - "run calculation"
+    description: "Perform a calculation task"
