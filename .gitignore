@@ -5,6 +5,9 @@ data/mydb
 
 
 # Test target directories
-/test/**/target/
+/tests/**/target/
+/tests/interactive/target
 logs
+target
+/logs
 
