@@ -9,6 +9,10 @@ RUN apt-get update && \
     build-essential \
     g++ \
     curl \
+    docker.io \
+    # Install Docker Compose
+    && curl -L "https://github.com/docker/compose/releases/download/v2.31.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
@@ -29,6 +33,9 @@ RUN apt-get update && \
     libssl3 \
     curl \
     tini \
+    docker.io \
+    && curl -L "https://github.com/docker/compose/releases/download/v2.31.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
