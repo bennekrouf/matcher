@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   matcher:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
     ports:
       - "50030:50030"
     volumes:
