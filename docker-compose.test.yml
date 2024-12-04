@@ -2,10 +2,8 @@
 version: '3.8'
 services:
   matcher:
-    build:
-      context: .
-      dockerfile: api-matcher:${BRANCH_NAME:-latest}
-      ports:
+    image: api-matcher:${BRANCH_NAME:-latest}
+    ports:
         - "50030:50030"
     environment:
       - RUST_LOG=debug
