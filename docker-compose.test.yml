@@ -1,9 +1,10 @@
 # docker-compose.test.yml
 version: '3.8'
-
 services:
   matcher:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime  # Specify the runtime dockerfile
     ports:
       - "50030:50030"
     environment:
