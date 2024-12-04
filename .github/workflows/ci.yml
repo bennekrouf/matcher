@@ -67,17 +67,26 @@ jobs:
           ls -la target || echo "no target dir"
           ls -la target/release || echo "no release dir"
           mkdir -p target/release || echo "failed to create dirs"
- 
+
       - name: Download Binary
         uses: actions/download-artifact@v3
         with:
           name: matcher-binary
-          path: target/release/
+          path: .  # Download to root of workspace
 
-      - name: Verify binary exists and set permissions
+      - name: Setup binary location
         run: |
-          ls -la target/release/matcher
+          mkdir -p target/release
+          mv matcher target/release/
+          ls -la target/release/matcher  # Verify file exists
           chmod +x target/release/matcher
+
+      - name: Debug build context
+        run: |
+          pwd
+          find . -name matcher
+          ls -la
+          ls -la target/release || echo "no release dir"
 
       - name: Set up Docker Compose
         uses: ndeloof/install-compose-action@v0.0.1
@@ -97,17 +106,10 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
           WORKDIR /app
           RUN mkdir -p /app/models/multilingual-MiniLM /app/data/mydb /app/logs
-          COPY target/release/matcher /app/matcher
-          COPY config/endpoints.yaml /app/endpoints.yaml
-          RUN curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/config.json -o /app/models/multilingual-MiniLM/config.json && \
-              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json -o /app/models/multilingual-MiniLM/tokenizer.json && \
-              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/pytorch_model.bin -o /app/models/multilingual-MiniLM/model.ot
-          RUN chmod -R 777 /app/data /app/logs
-          COPY docker-entrypoint.sh /app/
-          RUN chmod +x /app/docker-entrypoint.sh
-          EXPOSE 50030
-          ENTRYPOINT ["/usr/bin/tini", "--"]
-          CMD ["/app/docker-entrypoint.sh"]
+          # Use relative path here
+          COPY ./target/release/matcher /app/matcher
+          COPY ./config/endpoints.yaml /app/endpoints.yaml
+          # Rest remains the same...
           EOF
 
       - name: Extract branch name
