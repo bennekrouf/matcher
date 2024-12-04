@@ -16,12 +16,12 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/api-matcher:${{ github.ref_name }}
       - name: Run Trivy vulnerability scanner
-              uses: aquasecurity/trivy-action@master
-              with:
-                image-ref: 'api-matcher:test'
-                format: 'table'
-                exit-code: '1'
-                severity: 'CRITICAL'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'api-matcher:test'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL'
       - name: Run tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
