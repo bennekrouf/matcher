@@ -59,37 +59,29 @@ jobs:
     needs: build-and-test
     steps:
       - uses: actions/checkout@v3
+      
+      # Create staging directory
+      - name: Create build directory
+        run: mkdir -p docker_build
 
-      # Create the target directory first
-      - name: Create target directory
-        run: mkdir -p target/release
-
-      # Download the binary
+      # Download binary to staging directory
       - name: Download Binary
         uses: actions/download-artifact@v3
         with:
           name: matcher-binary
-          path: target/release/
+          path: docker_build/
 
-      # Verify and debug
-      - name: Debug file structure
+      # Copy other required files
+      - name: Copy required files
         run: |
-          echo "Current directory:"
-          pwd
-          echo "Directory listing:"
-          ls -la
-          echo "Target directory:"
-          ls -la target/release
-          echo "File details:"
-          file target/release/matcher
+          cp config/endpoints.yaml docker_build/
+          cp docker-entrypoint.sh docker_build/
+          chmod +x docker_build/matcher
 
-      - name: Set permissions
-        run: chmod +x target/release/matcher
-
-      # Create Dockerfile.runtime
-      - name: Create Runtime-only Dockerfile
+      # Create Dockerfile in staging directory
+      - name: Create Dockerfile
         run: |
-          cat > Dockerfile.runtime << 'EOF'
+          cat > docker_build/Dockerfile << 'EOF'
           FROM debian:bookworm-slim
           RUN apt-get update && \
               apt-get install -y \
@@ -100,28 +92,30 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
           WORKDIR /app
           RUN mkdir -p /app/models/multilingual-MiniLM /app/data/mydb /app/logs
-          COPY target/release/matcher /app/matcher
-          COPY config/endpoints.yaml /app/endpoints.yaml
-          RUN chmod +x /app/matcher
-          RUN curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/config.json -o /app/models/multilingual-MiniLM/config.json && \
-              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json -o /app/models/multilingual-MiniLM/tokenizer.json && \
-              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/pytorch_model.bin -o /app/models/multilingual-MiniLM/model.ot
-          RUN chmod -R 777 /app/data /app/logs
+          COPY matcher /app/matcher
+          COPY endpoints.yaml /app/endpoints.yaml
           COPY docker-entrypoint.sh /app/
-          RUN chmod +x /app/docker-entrypoint.sh
+          RUN chmod +x /app/matcher /app/docker-entrypoint.sh && \
+              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/config.json -o /app/models/multilingual-MiniLM/config.json && \
+              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/tokenizer.json -o /app/models/multilingual-MiniLM/tokenizer.json && \
+              curl -L https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/main/pytorch_model.bin -o /app/models/multilingual-MiniLM/model.ot && \
+              chmod -R 777 /app/data /app/logs
           EXPOSE 50030
           ENTRYPOINT ["/usr/bin/tini", "--"]
           CMD ["/app/docker-entrypoint.sh"]
           EOF
 
-      # Build using regular Docker command
+      # Build from staging directory
       - name: Build Docker image
-        run: docker build -t api-matcher:${{ env.BRANCH_NAME }} -f Dockerfile.runtime .
+        run: |
+          cd docker_build
+          docker build -t api-matcher:${{ env.BRANCH_NAME }} .
 
-      # Rest of your steps remain the same...
+      # Start containers (adjust path since we're in docker_build)
       - name: Start containers
-        run: docker-compose -f docker-compose.test.yml up -d
-
+        run: |
+          cd ..
+          docker-compose -f docker-compose.test.yml up -d
       - name: Run integration tests
         run: |
           cd tests/interactive

@@ -3,6 +3,7 @@
 data
 data/mydb
 
+docker_build
 
 # Test target directories
 /tests/**/target/

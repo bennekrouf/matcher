@@ -1,4 +1,5 @@
-target/
+target/*
+!target/release/matcher
 Dockerfile
 .dockerignore
 .git
