@@ -134,6 +134,7 @@ jobs:
         run: docker-compose -f docker-compose.test.yml up -d
 
       # Rest of your steps remain the same...      - name: Run integration tests
+      - name: Run tests
         run: |
           cd tests/interactive
           cargo run -- --test
