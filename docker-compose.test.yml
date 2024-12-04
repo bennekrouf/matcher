@@ -7,11 +7,11 @@ services:
         - "50030:50030"
     environment:
       - RUST_LOG=debug
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:50030/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:50030/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
 
   envoy:
     image: envoyproxy/envoy:v1.28-latest
@@ -19,6 +19,6 @@ services:
       - "9090:9090"
     volumes:
       - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
-    depends_on:
-      matcher:
-        condition: service_healthy
+    # depends_on:
+    #   matcher:
+    #     condition: service_healthy
