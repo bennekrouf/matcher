@@ -13,12 +13,12 @@ services:
     #   timeout: 5s
     #   retries: 5
 
-  envoy:
-    image: envoyproxy/envoy:v1.28-latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
+  # envoy:
+  #   image: envoyproxy/envoy:v1.28-latest
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
     # depends_on:
     #   matcher:
     #     condition: service_healthy
