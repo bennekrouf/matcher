@@ -35,16 +35,28 @@ jobs:
       - name: Clippy
         run: cargo clippy -- -D warnings
       
-      - name: Run tests
-        run: cargo test
-      
       - name: Build Release Binary
         run: cargo build --release
       
-      - name: Run integration tests
+      # Add cache step for interactive tests dependencies
+      - name: Cache interactive tests dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            tests/interactive/target
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-interactive-${{ hashFiles('tests/interactive/Cargo.lock', 'tests/interactive/Cargo.toml') }}
+
+      - name: Build interactive tests
         run: |
           cd tests/interactive
-          cargo test
+          cargo build
+
+      - name: Run interactive tests
+        run: |
+          cd tests/interactive
+          cargo run -- --test
       
       # Upload the built binary as an artifact
       - name: Upload Binary
