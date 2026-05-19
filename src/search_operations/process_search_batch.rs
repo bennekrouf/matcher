@@ -54,9 +54,7 @@ pub async fn process_search_batch(
         if !parameters.is_empty() {
             let pattern_params = extract_parameters(&processed.cleaned_text, pattern)?;
             for (key, value) in pattern_params {
-                if !parameters.contains_key(&key) {
-                    parameters.insert(key, value);
-                }
+                parameters.entry(key).or_insert(value);
             }
         } else {
             parameters = extract_parameters(&processed.cleaned_text, pattern)?;

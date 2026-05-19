@@ -1,0 +1,31 @@
+# .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # ... similar to publish job
+      - name: Build and push release
+        uses: docker/build-push-action@v4
+        with:
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/api-matcher:${{ github.ref_name }}
+      - name: Run Trivy vulnerability scanner
+              uses: aquasecurity/trivy-action@master
+              with:
+                image-ref: 'api-matcher:test'
+                format: 'table'
+                exit-code: '1'
+                severity: 'CRITICAL'
+      - name: Run tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          args: '--ignore-tests'
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v3

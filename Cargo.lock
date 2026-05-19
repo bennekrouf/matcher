@@ -2781,6 +2781,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "health"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c435144929e89b86d0e041bc36119e21b28e210d200106ffbfc0f46fdf0dfc3d"
+dependencies = [
+ "async-trait",
+ "parking_lot 0.12.3",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3890,6 +3902,7 @@ dependencies = [
  "clap",
  "futures",
  "futures-util",
+ "health",
  "iggy",
  "lancedb",
  "lazy_static",
